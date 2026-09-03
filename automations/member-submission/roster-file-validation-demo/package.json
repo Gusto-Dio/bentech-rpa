@@ -1,0 +1,15 @@
+{
+  "name": "@auto/member-submission-roster-file-validation-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "No-browser reference automation for the member-submission domain",
+  "dependencies": {
+    "@auto/member-submission-shared": "workspace:*",
+    "@rpa/core": "workspace:*",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@rpa/testkit": "workspace:*"
+  }
+}

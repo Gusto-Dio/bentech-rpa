@@ -1,0 +1,7 @@
+{
+  "$comment": "Layer 4, staging.",
+  "automation": {
+    "planCatalogFile": "data/input/plan-catalog.csv",
+    "maxMonthsAhead": 9
+  }
+}

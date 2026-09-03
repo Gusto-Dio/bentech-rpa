@@ -1,0 +1,14 @@
+{
+  "id": "__AUTOMATION_ID__",
+  "name": "__AUTOMATION_NAME__",
+  "description": "__DESCRIPTION__",
+  "domain": "__DOMAIN__",
+  "owners": ["__OWNER__"],
+  "criticality": "__CRITICALITY__",
+  "sessionKind": "browser",
+  "entry": "src/index.ts",
+  "queue": {
+    "name": "__QUEUE_NAME__"
+  },
+  "tags": []
+}

@@ -1,0 +1,98 @@
+{
+  "$comment": "SYNTHETIC. Same dummy group as the Anthem PoC, with UHC plan codes. 'The Company LLC' is not a real company and the census SSNs are deliberately invalid (000-xx-xxxx). Never add a real group: see docs/poc/sanitization.md.",
+  "items": [
+    {
+      "reference": "UHC-NP-0001",
+      "priority": "normal",
+      "payload": {
+        "companyID": "7789123456789123",
+        "companyName": "The Company LLC",
+        "fein": "881234567",
+        "applicationID": "135791",
+        "entityType": "llc",
+        "sicCode": "7311",
+        "dateEstablished": "2024-01-03",
+        "streetAddress1": "525 20th St",
+        "streetAddress2": "",
+        "city": "San Francisco",
+        "county": "San Francisco County",
+        "state": "CA",
+        "zip": "94107",
+        "companyPhoneNumber": "3035551234",
+        "benefitsAdmin": {
+          "firstName": "Jane",
+          "lastName": "Doe",
+          "email": "jane.doe@thecompany.example",
+          "title": "CEO"
+        },
+        "benefitsSignatory": {
+          "firstName": "Jane",
+          "lastName": "Doe",
+          "email": "jane.doe@thecompany.example",
+          "title": "CEO"
+        },
+        "coverageEffectiveDate": "2026-09-01",
+        "ratingStructure": "age_banded",
+        "medicalDeductibleReset": "plan",
+        "policies": [
+          {
+            "basePlanCode": "EPHE-L31S",
+            "planCode": "EPHE-L31S",
+            "planName": "UHC Choice Plus Silver 5000-4 - EPHE",
+            "benefitType": "medical",
+            "planType": "pos",
+            "contributionType": "Percentage of base",
+            "eeContribution": "75.0",
+            "dependentContribution": "50.0",
+            "fixedCompanyContributionAmount": null,
+            "waitingPeriod": "1st of month after hire",
+            "terminationPolicy": "Last day of month on or after termination",
+            "riders": []
+          },
+          {
+            "basePlanCode": "EPHE-L31S",
+            "planCode": "EPG7-L31S",
+            "planName": "UHC Choice Plus Gold 3500-1 - EPG7",
+            "benefitType": "medical",
+            "planType": "pos",
+            "contributionType": "Percentage of base",
+            "eeContribution": "75.0",
+            "dependentContribution": "50.0",
+            "fixedCompanyContributionAmount": null,
+            "waitingPeriod": "1st of month after hire",
+            "terminationPolicy": "Last day of month on or after termination",
+            "riders": []
+          }
+        ],
+        "eligibleEEs": 3,
+        "anteCount": 5,
+        "fteCount": 3,
+        "partTimeEECount": 2,
+        "partTimeEligibleEECount": 0,
+        "partTimeCovered": false,
+        "nonCoveredEEs": [],
+        "owners": [
+          {
+            "firstName": "Jane",
+            "lastName": "Doe",
+            "ownerEligible": true,
+            "percentage": 100.0
+          }
+        ],
+        "continuation": "state",
+        "waivedWP": true,
+        "workersComp": false,
+        "workersCompCarrier": "",
+        "workersCompPolicyNumber": "",
+        "bankName": "First National Commercial Bank",
+        "routingNumber": "091234567",
+        "accountNumber": "987654321098",
+        "s3Link": "https://example.invalid/synthetic-submission-folder",
+        "censusFile": "data/input/census-sample.csv",
+        "carrierOrderID": "a0mR700000Gexample",
+        "carrierOrderSubmissionRequestUUID": "1a23b456-789d-1234-56e7-8fg9h12ij34k",
+        "stateCarrierID": 1
+      }
+    }
+  ]
+}

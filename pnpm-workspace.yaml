@@ -1,0 +1,18 @@
+packages:
+  - 'packages/*'
+  - 'automations/*/*'
+
+# Templates are intentionally NOT workspace packages: they contain placeholder
+# tokens (__DOMAIN__, __AUTOMATION_ID__) that are not valid TypeScript until
+# `rpa new` substitutes them. They are verified separately by
+# `pnpm verify:templates`, which scaffolds each one into a temp dir and typechecks it.
+
+# Install scripts are allow-listed, not trusted wholesale.
+#   esbuild   - needed; it links the platform-native binary that tsx runs on.
+#   playwright - blocked on purpose. Its postinstall downloads a second copy of
+#                the browsers, which is wasted work in both environments: on
+#                macOS we install them once explicitly, and the Ubuntu runtime
+#                image already ships them at /ms-playwright.
+allowBuilds:
+  esbuild: true
+  playwright: false

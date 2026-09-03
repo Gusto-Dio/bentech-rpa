@@ -1,0 +1,9 @@
+{
+  "$comment": "Layer 4: settings owned by this automation. Credentials appear only as variable NAMES.",
+  "automation": {
+    "portalUrl": "https://www.saucedemo.com/",
+    "usernameEnv": "SAUCE_USERNAME",
+    "passwordEnv": "SAUCE_PASSWORD",
+    "approvalThresholdCents": 10000
+  }
+}

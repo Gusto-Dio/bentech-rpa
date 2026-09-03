@@ -1,0 +1,28 @@
+{
+  "$comment": "Staging servers (headless Ubuntu). Layer 3 of 5. Talks to Orchestrator - replace the placeholder values below, then run `pnpm rpa orchestrator check --env staging`.",
+  "logLevel": "info",
+
+  "$comment_maxRetries": "MUST be 0 while queue.mode is 'robot': Orchestrator owns retries there, and local retries would multiply with its Auto-Retry. Config validation enforces this.",
+  "maxRetries": 0,
+
+  "queue": {
+    "provider": "orchestrator",
+    "mode": "robot",
+    "robotIdentifierEnv": "ORCH_ROBOT_KEY",
+    "specificContentEncoding": "json-encoded"
+  },
+
+  "orchestrator": {
+    "$comment": "REPLACE organization, tenant and folderId with your tenant's values. Credentials are NAMES of env vars - never values.",
+    "baseUrl": "https://cloud.uipath.com",
+    "organization": "your-organization",
+    "tenant": "DefaultTenant",
+    "folderId": 1,
+    "scopes": ["OR.Queues", "OR.Assets", "OR.Administration"],
+    "clientIdEnv": "ORCH_CLIENT_ID",
+    "clientSecretEnv": "ORCH_CLIENT_SECRET",
+    "requestTimeoutMs": 30000,
+    "maxRetries": 3,
+    "tokenRefreshSkewMs": 60000
+  }
+}

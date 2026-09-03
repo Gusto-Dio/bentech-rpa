@@ -1,0 +1,19 @@
+{
+  "id": "member-submission/roster-file-validation-demo",
+  "name": "Roster File Validation (demo)",
+  "description": "Validates member elections against the carrier plan catalog. No browser: file and rule work only.",
+  "domain": "member-submission",
+  "owners": ["@gusto/benefits-rpa-member-submission"],
+  "criticality": "low",
+  "sessionKind": "none",
+  "entry": "src/index.ts",
+  "queue": {
+    "name": "member-submission.roster-file-validation-demo",
+    "maxRetries": 2
+  },
+  "schedule": {
+    "cron": "30 5 * * 1-5",
+    "timezone": "America/Denver"
+  },
+  "tags": ["demo", "no-browser", "validation"]
+}

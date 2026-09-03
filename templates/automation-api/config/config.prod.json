@@ -1,0 +1,6 @@
+{
+  "$comment": "Layer 4, production.",
+  "automation": {
+    "inputFile": "data/input/__AUTOMATION_SLUG__.csv"
+  }
+}

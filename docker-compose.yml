@@ -1,0 +1,49 @@
+# Run any automation exactly as the Ubuntu servers do, from either platform:
+#
+#   docker compose run --rm rpa group-submission/carrier-portal-submission-demo
+#   docker compose run --rm rpa member-submission/roster-file-validation-demo
+#   docker compose run --rm rpa                  # no id: lists what is available
+name: benefits-rpa
+
+services:
+  rpa:
+    build:
+      context: .
+      dockerfile: tooling/docker/Dockerfile
+    image: benefits-rpa:local
+
+    # tini as PID 1, so SIGTERM reaches the runner and the graceful stop works:
+    # the current transaction finishes, the browser closes, then the process
+    # exits. Without an init, a stop signal orphans the browser instead.
+    init: true
+
+    # Chromium writes shared memory to /dev/shm; Docker's 64MB default makes it
+    # crash on content-heavy pages. Raising it is the correct fix -
+    # --disable-dev-shm-usage is the workaround for when you cannot.
+    shm_size: 1gb
+
+    environment:
+      APP_ENV: ${APP_ENV:-dev}
+      # No display in a container, ever. Not overridable from the host by accident.
+      HEADLESS: "true"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_PRETTY: ${LOG_PRETTY:-false}
+
+    # Credentials come from the environment, never from the image. Optional, so
+    # a server that injects real environment variables needs no .env at all.
+    env_file:
+      - path: .env
+        required: false
+
+    volumes:
+      # Queue state and evidence survive the container. Without these, a failed
+      # run's screenshots and traces disappear with it.
+      - ./data:/app/data
+      - ./artifacts:/app/artifacts
+
+    # On a Linux host whose deploy user is not uid 1000, the mounts above will be
+    # unwritable by the image's `pwuser`. Fix it by matching the host uid rather
+    # than by running as root:
+    #   user: "${UID:-1000}:${GID:-1000}"
+
+    command: ["group-submission/carrier-portal-submission-demo"]

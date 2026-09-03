@@ -1,0 +1,21 @@
+{
+  "$comment": "Synthetic seed transactions. NEVER put real member, group or customer data here - use obviously fake identifiers.",
+  "items": [
+    {
+      "reference": "REC-0001",
+      "priority": "normal",
+      "payload": {
+        "recordId": "FAKE-0001",
+        "amountCents": 12500
+      }
+    },
+    {
+      "reference": "REC-0002",
+      "priority": "normal",
+      "payload": {
+        "recordId": "FAKE-0002",
+        "amountCents": 9900
+      }
+    }
+  ]
+}

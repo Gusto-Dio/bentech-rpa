@@ -1,0 +1,8 @@
+{
+  "$comment": "Layer 4, production. Same shape as dev; different targets.",
+  "automation": {
+    "appUrl": "https://example.invalid",
+    "usernameEnv": "EXAMPLE_USERNAME",
+    "passwordEnv": "EXAMPLE_PASSWORD"
+  }
+}

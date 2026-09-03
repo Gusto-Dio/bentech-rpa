@@ -1,0 +1,27 @@
+{
+  "$comment": "Layer 4: UHC SAMx settings. Credentials are env-var NAMES only. The REPLACE_ME values were removed during sanitization - get them from the Benefits runbook. See docs/poc/sanitization.md.",
+  "automation": {
+    "portalUrl": "https://www.uhc.com/employer/",
+
+    "usernameEnv": "UHC_PORTAL_USERNAME",
+    "passwordEnv": "UHC_PORTAL_PASSWORD",
+
+    "producerFirstName": "REPLACE_ME",
+    "producerLastName": "REPLACE_ME",
+
+    "generalAgentName": "REPLACE_ME",
+    "generalAgentFranchiseCode": "REPLACE_ME",
+    "generalAgentEmail": "REPLACE_ME",
+    "pcisId": "REPLACE_ME",
+    "commissionPercentage": 100,
+
+    "dummyPcpCode": "REPLACE_ME",
+
+    "mfaLabel": "Access Token (UnitedHealthcare)",
+    "mfaSenderAllowList": ["txt.voice.google.com", "carrierops@gusto.com"],
+    "mfaTimeoutMs": 180000,
+
+    "$comment_allowSubmit": "Leave false. The PoC runs against the production portal; true would file a real attestation.",
+    "allowSubmit": false
+  }
+}

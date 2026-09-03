@@ -1,0 +1,17 @@
+{
+  "name": "@auto/group-submission-anthem-ca-new-plans",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Submits a new-plan group application to the Anthem CA producer portal",
+  "dependencies": {
+    "@auto/group-submission-shared": "workspace:*",
+    "@rpa/core": "workspace:*",
+    "exceljs": "4.4.0",
+    "playwright": "1.62.1",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@rpa/testkit": "workspace:*"
+  }
+}

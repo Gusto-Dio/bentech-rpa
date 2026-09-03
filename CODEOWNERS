@@ -1,0 +1,18 @@
+# Review routing. The platform team owns the engine; each process-type domain
+# owns its own automations. This is what keeps review from becoming a central
+# bottleneck once there are 100+ automations in the tree.
+
+# ---- Core: platform team ----
+/packages/                      @gusto/benefits-rpa-platform
+/tooling/                       @gusto/benefits-rpa-platform
+/config/                        @gusto/benefits-rpa-platform
+/templates/                     @gusto/benefits-rpa-platform
+/pnpm-workspace.yaml            @gusto/benefits-rpa-platform
+/tsconfig.json                  @gusto/benefits-rpa-platform
+/Dockerfile                     @gusto/benefits-rpa-platform
+/docker-compose.yml             @gusto/benefits-rpa-platform
+
+# ---- Automations: one entry per process-type domain ----
+/automations/group-submission/  @gusto/benefits-rpa-group-submission
+/automations/member-submission/ @gusto/benefits-rpa-member-submission
+/automations/advising/          @gusto/benefits-rpa-advising

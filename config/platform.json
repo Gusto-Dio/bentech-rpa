@@ -1,0 +1,49 @@
+{
+  "$comment": "Platform-wide defaults for every automation. Layer 2 of 5 (after the schema defaults in packages/core). Contains no secrets and no automation-specific values.",
+
+  "logLevel": "info",
+  "logPretty": false,
+
+  "artifactsDir": "artifacts",
+  "dataDir": "data",
+  "keepArtifactsOnSuccess": false,
+
+  "maxRetries": 2,
+  "retryBackoffMs": 1500,
+  "retryBackoffFactor": 2,
+  "retryBackoffMaxMs": 30000,
+
+  "maxConsecutiveSystemExceptions": 5,
+  "transactionTimeoutMs": 120000,
+
+  "browser": {
+    "headless": true,
+    "slowMoMs": 0,
+    "navigationTimeoutMs": 30000,
+    "actionTimeoutMs": 15000,
+    "viewport": { "width": 1440, "height": 900 },
+    "locale": "en-US",
+    "timezoneId": "America/Denver",
+    "noSandbox": false,
+    "args": [],
+    "tracing": true,
+    "$comment_recordVideo": "Off by default. A video covers the WHOLE run, which is what makes it good for demonstrating the process end to end and wrong for unattended production - it would film every carrier portal the robot touches. Turn it on per run with RECORD_VIDEO=true.",
+    "recordVideo": false
+  },
+
+  "$comment_mfa": "Where MFA codes come from. Manual is the safe default: it needs a TTY, so an unattended run fails fast instead of silently reaching into a mailbox. An environment opts in to a Gmail provider explicitly. gmail holds env-var NAMES only.",
+  "mfa": {
+    "provider": "manual",
+    "cdpEndpoint": "http://127.0.0.1:9222",
+    "profileDir": "data/profiles/gmail-mfa",
+    "pollIntervalMs": 5000,
+    "gmail": {
+      "clientIdEnv": "GMAIL_CLIENT_ID",
+      "clientSecretEnv": "GMAIL_CLIENT_SECRET",
+      "refreshTokenEnv": "GMAIL_REFRESH_TOKEN",
+      "requestTimeoutMs": 30000,
+      "maxRetries": 3,
+      "tokenRefreshSkewMs": 60000
+    }
+  }
+}

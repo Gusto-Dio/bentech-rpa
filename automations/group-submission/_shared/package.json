@@ -1,0 +1,16 @@
+{
+  "name": "@auto/group-submission-shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared portal page objects and business rules for the group-submission domain",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@rpa/core": "workspace:*",
+    "exceljs": "4.4.0",
+    "playwright": "1.62.1",
+    "zod": "4.5.4"
+  }
+}

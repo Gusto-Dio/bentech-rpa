@@ -1,0 +1,5 @@
+plan_code,plan_name,tier,carrier
+MED-PPO-1000,Fictional PPO 1000,medical,Example Health Co
+MED-HDHP-3000,Fictional HDHP 3000,medical,Example Health Co
+DEN-BASE-01,Fictional Dental Basic,dental,Example Dental Co
+VIS-BASE-01,"Fictional Vision, Basic",vision,Example Vision Co

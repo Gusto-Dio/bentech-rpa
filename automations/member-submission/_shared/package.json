@@ -1,0 +1,16 @@
+{
+  "name": "@auto/member-submission-shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared file parsing and eligibility rules for the member-submission domain",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@rpa/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@rpa/testkit": "workspace:*"
+  }
+}

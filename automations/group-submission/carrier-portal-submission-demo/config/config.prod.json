@@ -1,0 +1,9 @@
+{
+  "$comment": "Layer 4, production. Same shape, real portal, tighter approval threshold.",
+  "automation": {
+    "portalUrl": "https://www.saucedemo.com/",
+    "usernameEnv": "SAUCE_USERNAME",
+    "passwordEnv": "SAUCE_PASSWORD",
+    "approvalThresholdCents": 5000
+  }
+}

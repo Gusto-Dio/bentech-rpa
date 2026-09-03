@@ -1,0 +1,9 @@
+{
+  "$comment": "Layer 4, staging. Same shape as dev and prod; the queue and credentials come from Orchestrator in this environment.",
+  "automation": {
+    "portalUrl": "https://www.saucedemo.com/",
+    "usernameEnv": "SAUCE_USERNAME",
+    "passwordEnv": "SAUCE_PASSWORD",
+    "approvalThresholdCents": 7500
+  }
+}

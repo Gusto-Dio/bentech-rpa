@@ -1,0 +1,7 @@
+{
+  "$comment": "Layer 4. Paths are relative to this automation's folder and joined with path.join, never absolute - the same value has to work on macOS and inside the container.",
+  "automation": {
+    "planCatalogFile": "data/input/plan-catalog.csv",
+    "maxMonthsAhead": 12
+  }
+}

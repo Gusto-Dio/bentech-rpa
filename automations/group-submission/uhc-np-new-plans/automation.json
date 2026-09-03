@@ -1,0 +1,25 @@
+{
+  "id": "group-submission/uhc-np-new-plans",
+  "name": "UHC New Plans",
+  "description": "Submits a new-plan group application to the UHC SAMx portal",
+  "domain": "group-submission",
+  "owners": [
+    "@gusto/benefits-rpa-group-submission"
+  ],
+  "criticality": "high",
+  "sessionKind": "browser",
+  "entry": "src/index.ts",
+  "queue": {
+    "name": "group-submission.uhc-np-new-plans",
+    "maxRetries": 1
+  },
+  "tags": [
+    "poc",
+    "carrier-portal",
+    "uhc",
+    "samx",
+    "mfa",
+    "phase-1"
+  ],
+  "$comment": "PoC, phase 1: local JSON queue, local credentials, no Orchestrator. maxRetries is 1 because a retry re-drives a partially-filled case - the runbook explicitly supports resuming, and step() makes it safe, but it is not free."
+}

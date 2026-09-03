@@ -1,0 +1,50 @@
+{
+  "$comment": "SYNTHETIC transactions only. Payloads carry an internal member reference and nothing else - no names, no dates of birth, no SSNs, no wages. That is the rule for this domain, not a shortcut for the demo.",
+  "items": [
+    {
+      "reference": "MBR-2001",
+      "priority": "normal",
+      "payload": {
+        "memberRef": "MBR-000123",
+        "planCode": "MED-PPO-1000",
+        "effectiveDate": "2027-01-01",
+        "coverageTier": "employee-only"
+      }
+    },
+    {
+      "reference": "MBR-2002",
+      "priority": "normal",
+      "payload": {
+        "memberRef": "MBR-000124",
+        "planCode": "MED-PPO-9999",
+        "effectiveDate": "2027-01-01",
+        "coverageTier": "employee-spouse",
+        "$comment": "BUSINESS EXCEPTION: plan code is not in the carrier catalog. No retry can add it."
+      }
+    },
+    {
+      "reference": "MBR-2003",
+      "priority": "normal",
+      "payload": {
+        "memberRef": "MBR-000125",
+        "planCode": "DEN-BASE-01",
+        "effectiveDate": "2027-02-01",
+        "coverageTier": "family",
+        "injectFault": "system-once",
+        "$comment": "SYSTEM EXCEPTION then RECOVERY: attempt 1 fails, attempt 2 succeeds. recover() is a no-op for sessionKind none - the retry itself is the recovery."
+      }
+    },
+    {
+      "reference": "MBR-2004",
+      "priority": "low",
+      "payload": {
+        "memberRef": "MBR-000126",
+        "planCode": "VIS-BASE-01",
+        "effectiveDate": "2027-03-01",
+        "coverageTier": "employee-only",
+        "injectFault": "system-always",
+        "$comment": "SYSTEM EXCEPTION, RETRIES EXHAUSTED: marked failed/system after maxRetries; the run continues."
+      }
+    }
+  ]
+}

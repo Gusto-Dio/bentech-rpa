@@ -1,0 +1,33 @@
+{
+  "browser": {
+    "browserName": "chromium",
+    "isolated": true,
+    "launchOptions": {
+      "headless": false
+    },
+    "contextOptions": {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "en-US",
+      "timezoneId": "America/Denver"
+    }
+  },
+  "testIdAttribute": "data-test",
+  "timeouts": {
+    "action": 15000,
+    "navigation": 30000
+  },
+  "network": {
+    "allowedOrigins": [
+      "https://www.saucedemo.com",
+      "https://brokerportal.anthem.com",
+      "https://login.broker.anthem.com",
+      "https://elevancehealthfulcrum.my.site.com"
+    ]
+  },
+  "codegen": "typescript",
+  "outputDir": ".tmp/mcp-output",
+  "imageResponses": "allow"
+}

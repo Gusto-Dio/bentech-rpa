@@ -1,0 +1,50 @@
+{
+  "$comment": "SYNTHETIC transactions only. Group ids, names and postcodes here are invented. Never commit real group, member or carrier data - see docs/authoring-an-automation.md.",
+  "items": [
+    {
+      "reference": "SUB-1001",
+      "priority": "high",
+      "payload": {
+        "groupId": "GRP-8842",
+        "groupName": "Northwind Test Bakery",
+        "contact": { "firstName": "Ada", "lastName": "Sample", "postalCode": "80202" },
+        "requestedPlans": ["Sauce Labs Backpack", "Sauce Labs Bike Light"]
+      }
+    },
+    {
+      "reference": "SUB-1002",
+      "priority": "normal",
+      "payload": {
+        "groupId": "GRP-8843",
+        "groupName": "Contoso Fictional Freight",
+        "contact": { "firstName": "Grace", "lastName": "Example", "postalCode": "80203" },
+        "requestedPlans": ["Sauce Labs Backpack", "Sauce Labs Hoverboard"],
+        "$comment": "BUSINESS EXCEPTION: 'Sauce Labs Hoverboard' is not in the carrier catalog. No retry can conjure it."
+      }
+    },
+    {
+      "reference": "SUB-1003",
+      "priority": "normal",
+      "payload": {
+        "groupId": "GRP-8844",
+        "groupName": "Initech Imaginary Ltd",
+        "contact": { "firstName": "Alan", "lastName": "Placeholder", "postalCode": "80204" },
+        "requestedPlans": ["Sauce Labs Bolt T-Shirt"],
+        "injectFault": "system-once",
+        "$comment": "SYSTEM EXCEPTION then RECOVERY: attempt 1 fails, the session is relaunched and re-authenticated, attempt 2 succeeds."
+      }
+    },
+    {
+      "reference": "SUB-1004",
+      "priority": "low",
+      "payload": {
+        "groupId": "GRP-8845",
+        "groupName": "Umbrella Notional Co",
+        "contact": { "firstName": "Mei", "lastName": "Notreal", "postalCode": "80205" },
+        "requestedPlans": ["Sauce Labs Fleece Jacket"],
+        "injectFault": "system-always",
+        "$comment": "SYSTEM EXCEPTION, RETRIES EXHAUSTED: fails every attempt, so after maxRetries it is marked failed/system and the run continues."
+      }
+    }
+  ]
+}

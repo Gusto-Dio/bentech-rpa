@@ -1,0 +1,13 @@
+{
+  "name": "@auto/group-submission-carrier-portal-submission-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Reference browser automation for the group-submission domain",
+  "dependencies": {
+    "@auto/group-submission-shared": "workspace:*",
+    "@rpa/core": "workspace:*",
+    "playwright": "1.62.1",
+    "zod": "4.5.4"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "group-submission/carrier-portal-submission-demo",
+  "name": "Carrier Portal Submission (demo)",
+  "description": "Reference automation: signs in to a carrier portal, assembles a group submission, reviews the quote and submits it.",
+  "domain": "group-submission",
+  "owners": ["@gusto/benefits-rpa-group-submission"],
+  "criticality": "low",
+  "sessionKind": "browser",
+  "entry": "src/index.ts",
+  "queue": {
+    "name": "group-submission.carrier-portal-submission-demo",
+    "maxRetries": 2
+  },
+  "schedule": {
+    "cron": "0 6 * * 1-5",
+    "timezone": "America/Denver"
+  },
+  "tags": ["demo", "portal", "submission"]
+}

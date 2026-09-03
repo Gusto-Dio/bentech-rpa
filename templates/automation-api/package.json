@@ -1,0 +1,12 @@
+{
+  "name": "__PKG_NAME__",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "__DESCRIPTION__",
+  "dependencies": {
+    "@rpa/core": "workspace:*",
+    "__DOMAIN_SHARED_PKG__": "workspace:*",
+    "zod": "4.5.4"
+  }
+}

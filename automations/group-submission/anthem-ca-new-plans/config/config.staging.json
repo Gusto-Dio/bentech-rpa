@@ -1,0 +1,36 @@
+{
+  "$comment": "Layer 4: Anthem CA settings. Credentials are env-var NAMES only. The REPLACE_ME values identify the writing agent and paid agency on the license & contract validation screen. They are a real named producer and a real agency code, so they are NOT committed - get them from the Benefits runbook. See docs/poc/sanitization.md.",
+  "$comment_transactionTimeoutMs": "This process is a twelve-step Salesforce wizard against a production portal: group setup, portfolios, a census download/upload round-trip, plan selection, quote DOCUMENT GENERATION (30-45s on its own) and a seven-screen employer application. The 120s platform default expires somewhere around the census and reports it as a precondition failure on whatever step was unlucky - which reads like a broken locator and is not. 15 minutes is sized to the real process, not padded.",
+  "transactionTimeoutMs": 900000,
+
+  "automation": {
+    "portalUrl": "https://brokerportal.anthem.com/apps/ptb/login?site=fullsite&brand=ABC",
+    "signedInProbeUrl": "https://brokerportal.anthem.com/apps/ptb/",
+
+    "usernameEnv": "ANTHEM_PORTAL_USERNAME",
+    "passwordEnv": "ANTHEM_PORTAL_PASSWORD",
+
+    "producerFirstName": "REPLACE_ME",
+    "producerLastName": "REPLACE_ME",
+    "paidAgencyName": "REPLACE_ME",
+    "paidAgencyCode": "REPLACE_ME",
+
+    "mfaLabel": "Access Token (Anthem)",
+    "mfaSenderAllowList": ["broker.anthem.com", "carrierops@gusto.com"],
+    "mfaSubjectContains": "One-Time Security Code",
+    "$comment_mfaTimeoutMs": "Measured Anthem delivery on 2026-09-02, across four consecutive requests: ~132s, then >180s, then >300s. Every code DID arrive; the latency escalates when codes are requested repeatedly, which looks like carrier throttling. A too-tight timeout throws away a code that is already in flight and then asks for another, making the throttling worse. 10 minutes is generous on purpose: a session is established once and reused, so this wait is paid once per session, not per transaction.",
+    "mfaTimeoutMs": 420000,
+    "$comment_mfaResend": "Measured 2026-09-02: a code arrived 26s after it was requested. Earlier readings of 132s-600s were an artefact of a reader that could not refresh its view, not of slow delivery. 120s is therefore generous, and it stays well inside the ~291s expiry the portal shows, so a resend always gets a genuinely fresh code.",
+    "mfaResendAfterMs": 120000,
+    "mfaMaxResends": 2,
+
+    "$comment_typeOfBusiness": "STOPGAP. Group-specific data that the shared payload has no field for - see open-questions.md. Correct for the synthetic PoC group only.",
+    "typeOfBusiness": "Advertising Agency",
+
+    "maxGroupNameLength": 50,
+    "maxAddressLength": 27,
+
+    "$comment_allowSubmit": "Leave false. The PoC runs against the production portal; true would sign and file a real application.",
+    "allowSubmit": false
+  }
+}

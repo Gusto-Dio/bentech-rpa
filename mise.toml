@@ -1,0 +1,4 @@
+# mise is the Node version manager installed on this machine; .nvmrc is kept in
+# sync for nvm/fnm users and for CI images that read it. Both must say 24.
+[tools]
+node = "24"

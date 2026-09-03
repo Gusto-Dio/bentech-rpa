@@ -1,0 +1,24 @@
+{
+  "id": "group-submission/anthem-ca-new-plans",
+  "name": "Anthem CA New Plans",
+  "description": "Submits a new-plan group application to the Anthem CA producer portal",
+  "domain": "group-submission",
+  "owners": [
+    "@gusto/benefits-rpa-group-submission"
+  ],
+  "criticality": "high",
+  "sessionKind": "browser",
+  "entry": "src/index.ts",
+  "queue": {
+    "name": "group-submission.anthem-ca-new-plans",
+    "maxRetries": 1
+  },
+  "tags": [
+    "poc",
+    "carrier-portal",
+    "anthem",
+    "mfa",
+    "phase-1"
+  ],
+  "$comment": "PoC, phase 1: local JSON queue, local credentials, no Orchestrator. maxRetries is 1 because a retry re-drives a partially-filled portal application - the step() resume path makes that safe, but it is not free."
+}

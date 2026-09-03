@@ -1,0 +1,13 @@
+{
+  "name": "@rpa/testkit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Fakes and fixtures for testing automations without a browser or a queue",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@rpa/core": "workspace:*"
+  }
+}

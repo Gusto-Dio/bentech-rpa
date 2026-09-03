@@ -1,0 +1,35 @@
+{
+  "$comment": "Production servers (headless Ubuntu). Layer 3 of 5.",
+  "logLevel": "info",
+  "logPretty": false,
+
+  "$comment_maxRetries": "0 because queue.mode is 'robot' and Orchestrator owns retries. Configure Auto-Retry on the queue in Orchestrator instead.",
+  "maxRetries": 0,
+  "maxConsecutiveSystemExceptions": 3,
+
+  "browser": {
+    "headless": true,
+    "slowMoMs": 0
+  },
+
+  "queue": {
+    "provider": "orchestrator",
+    "mode": "robot",
+    "robotIdentifierEnv": "ORCH_ROBOT_KEY",
+    "specificContentEncoding": "json-encoded"
+  },
+
+  "orchestrator": {
+    "$comment": "REPLACE organization, tenant and folderId. Credentials are NAMES of env vars.",
+    "baseUrl": "https://cloud.uipath.com",
+    "organization": "your-organization",
+    "tenant": "DefaultTenant",
+    "folderId": 1,
+    "scopes": ["OR.Queues", "OR.Assets", "OR.Administration"],
+    "clientIdEnv": "ORCH_CLIENT_ID",
+    "clientSecretEnv": "ORCH_CLIENT_SECRET",
+    "requestTimeoutMs": 30000,
+    "maxRetries": 3,
+    "tokenRefreshSkewMs": 120000
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "extends": "./tooling/tsconfig/base.json",
+  "include": [
+    "packages/*/src/**/*.ts",
+    "automations/*/*/src/**/*.ts",
+    "tooling/scripts/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/node_modules",
+    // Templates hold placeholder tokens that are not valid TypeScript until
+    // `rpa new` substitutes them. `pnpm verify:templates` typechecks them
+    // properly, by scaffolding each one first.
+    "templates"
+  ]
+}

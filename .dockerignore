@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+.git
+.gitignore
+artifacts
+data/queue.*.json
+.tmp
+.env
+.env.*
+!.env.example
+templates
+docs
+certs/README.md
+*.md
+!README.md

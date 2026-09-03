@@ -1,0 +1,8 @@
+{
+  "$comment": "Layer 4: settings owned by this automation. Secret NAMES only, never values.",
+  "automation": {
+    "appUrl": "https://example.invalid",
+    "usernameEnv": "EXAMPLE_USERNAME",
+    "passwordEnv": "EXAMPLE_PASSWORD"
+  }
+}

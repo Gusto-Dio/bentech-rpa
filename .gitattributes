@@ -1,0 +1,13 @@
+# LF everywhere. The runtime is Ubuntu; CRLF in a shell script or a config file
+# is a real "works on my machine" failure mode.
+* text=auto eol=lf
+
+*.sh   text eol=lf
+*.json text eol=lf
+*.yaml text eol=lf
+*.yml  text eol=lf
+*.ts   text eol=lf
+*.md   text eol=lf
+
+*.png binary
+*.zip binary

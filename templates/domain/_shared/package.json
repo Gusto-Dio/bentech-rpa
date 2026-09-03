@@ -1,0 +1,13 @@
+{
+  "name": "__DOMAIN_SHARED_PKG__",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared page objects and business rules for the __DOMAIN__ domain",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@rpa/core": "workspace:*"
+  }
+}

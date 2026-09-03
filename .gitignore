@@ -1,0 +1,56 @@
+node_modules/
+.pnpm-store/
+
+# Secrets. Never commit. .env.example documents the NAMES only.
+.env
+.env.*
+!.env.example
+
+# Internal root CAs. Public certificates, but they describe internal
+# infrastructure and are supplied per environment. See certs/README.md.
+certs/*.crt
+certs/*.pem
+
+# Source material for the PoCs. Contains PII-shaped census rows and real
+# producer identifiers. Gdrive is the source of truth; only the sanitized
+# derivatives under docs/poc/ belong in the repo. See docs/poc/sanitization.md.
+docs/poc/**/*.zip
+docs/poc/**/*.xlsx
+docs/poc/**/*.xlsm
+docs/poc/**/*.docx
+docs/poc/**/*.pdf
+
+# CREDENTIAL-EQUIVALENT. A persistent browser profile holds a live, logged-in
+# Google session; a storageState file holds live carrier portal cookies. Anyone
+# with these files has the account. Never commit, never copy off the machine.
+data/profiles/
+data/sessions/
+
+# Runtime state and evidence
+artifacts/
+data/queue.*.json
+data/queue.*.json.tmp
+.tmp/
+
+# SUPERVISED live-fire drivers. Each one hardcodes `allowSubmit: true` to get
+# past the guard in CLAUDE.md rule 10, against Anthem's PRODUCTION portal - so
+# running one can SIGN AND FILE a real group application under a real
+# producer's licence. They are hand-run reconnaissance tools, labelled "Not
+# shipped" in their own headers, and nothing that can file an application
+# belongs in a clone. See the automation README.
+automations/group-submission/anthem-ca-new-plans/reach-signature.ts
+automations/group-submission/anthem-ca-new-plans/resume-signature.ts
+automations/group-submission/anthem-ca-new-plans/lock-and-look.ts
+automations/group-submission/anthem-ca-new-plans/sig-format.ts
+automations/group-submission/anthem-ca-new-plans/sig-signatory.ts
+
+# Machine-local agent settings. `*.local.json` is per-developer by convention
+# and its permission allow-list describes one machine, not the project.
+.claude/settings.local.json
+
+# Editor / OS
+.DS_Store
+*.log
+.idea/
+.vscode/*
+!.vscode/extensions.json

@@ -1,0 +1,14 @@
+{
+  "name": "@rpa/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "rpa - run, list, validate and scaffold automations",
+  "exports": {
+    ".": "./src/main.ts"
+  },
+  "dependencies": {
+    "@rpa/core": "workspace:*",
+    "playwright": "1.62.1"
+  }
+}
