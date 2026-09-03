@@ -1,18 +1,29 @@
-# Review routing. The platform team owns the engine; each process-type domain
-# owns its own automations. This is what keeps review from becoming a central
-# bottleneck once there are 100+ automations in the tree.
+# Review routing.
+#
+# INTERIM: everything routes to @oscarmiza, because the process-type domain
+# teams do not exist yet.
+#
+# The intended shape is one owner per domain - the platform team owns the
+# engine, each domain owns its own automations - which is what keeps review
+# from becoming a central bottleneck once there are 100+ automations in the
+# tree. The paths below are already split along those lines, so handing a
+# domain over is a one-word change on one line rather than a restructuring.
+# Adding a domain means adding a line; see "Where code goes" in CLAUDE.md.
 
-# ---- Core: platform team ----
-/packages/                      @gusto/benefits-rpa-platform
-/tooling/                       @gusto/benefits-rpa-platform
-/config/                        @gusto/benefits-rpa-platform
-/templates/                     @gusto/benefits-rpa-platform
-/pnpm-workspace.yaml            @gusto/benefits-rpa-platform
-/tsconfig.json                  @gusto/benefits-rpa-platform
-/Dockerfile                     @gusto/benefits-rpa-platform
-/docker-compose.yml             @gusto/benefits-rpa-platform
+# Catch-all first, so no path is ever unowned. More specific rules below win.
+*                               @oscarmiza
+
+# ---- Core: the platform team's remit ----
+/packages/                      @oscarmiza
+/tooling/                       @oscarmiza
+/config/                        @oscarmiza
+/templates/                     @oscarmiza
+/pnpm-workspace.yaml            @oscarmiza
+/tsconfig.json                  @oscarmiza
+/Dockerfile                     @oscarmiza
+/docker-compose.yml             @oscarmiza
 
 # ---- Automations: one entry per process-type domain ----
-/automations/group-submission/  @gusto/benefits-rpa-group-submission
-/automations/member-submission/ @gusto/benefits-rpa-member-submission
-/automations/advising/          @gusto/benefits-rpa-advising
+/automations/group-submission/  @oscarmiza
+/automations/member-submission/ @oscarmiza
+/automations/advising/          @oscarmiza
