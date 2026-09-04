@@ -3,14 +3,14 @@
 #   docker compose run --rm rpa group-submission/carrier-portal-submission-demo
 #   docker compose run --rm rpa member-submission/roster-file-validation-demo
 #   docker compose run --rm rpa                  # no id: lists what is available
-name: benefits-rpa
+name: bentech-rpa
 
 services:
   rpa:
     build:
       context: .
       dockerfile: tooling/docker/Dockerfile
-    image: benefits-rpa:local
+    image: bentech-rpa:local
 
     # tini as PID 1, so SIGTERM reaches the runner and the graceful stop works:
     # the current transaction finishes, the browser closes, then the process

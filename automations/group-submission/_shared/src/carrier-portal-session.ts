@@ -34,7 +34,7 @@ import type { BrowserContext, Page } from 'playwright';
  *
  * ── WHY THIS IS INJECTED RATHER THAN WRITTEN HERE ────────────────────────────
  * The probe and the password/MFA steps need selectors, and selectors belong in
- * an automation's own src/pages/ (CLAUDE.md rule 5). Two carriers' login forms
+ * an automation's own src/pages/ (AGENTS.md rule 5). Two carriers' login forms
  * hardcoded into this shared file would also mean every Anthem selector change
  * touching the file UHC depends on. So this file owns the ORDER of operations -
  * which is the part that is easy to get wrong and identical for both carriers -
@@ -212,7 +212,7 @@ class CarrierPortalSessionImpl implements CarrierPortalSession {
    * cookies, so a cached "we are signed in" flag would be a lie exactly when it
    * matters most - the first retry would run against a signed-out portal and
    * fail for a different reason than the original error. This is what makes it
-   * idempotent under CLAUDE.md rule 7.
+   * idempotent under AGENTS.md rule 7.
    */
   async ensureSignedIn(page: Page, context: BrowserContext): Promise<SignInOutcome> {
     const stored = await readStoredState(this.#options.storageStatePath, this.#logger);
@@ -448,7 +448,7 @@ class CarrierPortalSessionImpl implements CarrierPortalSession {
 /**
  * Business vs System for a failed sign-in.
  *
- * The rule is the one from CLAUDE.md: would running this again, on a fresh
+ * The rule is the one from AGENTS.md: would running this again, on a fresh
  * browser, plausibly give a different answer?
  *
  *   Lockout / too many attempts -> NO, and retrying actively makes it worse by

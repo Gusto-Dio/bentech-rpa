@@ -4,14 +4,14 @@
 # runtime, N processes selected at start - so ops intuition transfers, and a
 # Chromium or Node CVE is one rebuild instead of a hundred.
 #
-#   docker build  -f tooling/docker/Dockerfile -t benefits-rpa:local .
-#   docker run --rm --shm-size=1g benefits-rpa:local <automation-id>
+#   docker build  -f tooling/docker/Dockerfile -t bentech-rpa:local .
+#   docker run --rm --shm-size=1g bentech-rpa:local <automation-id>
 #
 # For the Ubuntu servers, build explicitly for their architecture. On Apple
 # Silicon this cross-builds (slowly), which is the price of not shipping an
 # arm64 image to an x86_64 host:
 #
-#   docker buildx build --platform linux/amd64 -f tooling/docker/Dockerfile -t benefits-rpa:1.0.0 .
+#   docker buildx build --platform linux/amd64 -f tooling/docker/Dockerfile -t bentech-rpa:1.0.0 .
 #
 # The tag is multi-arch, so the same line works on both platforms.
 FROM mcr.microsoft.com/playwright:v1.62.1-jammy

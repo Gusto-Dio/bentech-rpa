@@ -12,7 +12,7 @@ Two findings from the Anthem run apply directly to UHC:
   all, so the original allow-list matched nothing and every code would have been
   rejected. It is now `["txt.voice.google.com", "carrierops@gusto.com"]`.
 - **Do not re-tune MFA timeouts or reintroduce `is:unread`.** See
-  `docs/poc/anthem-ca-new-plans/PROMPT.md` section 0b and CLAUDE.md rule 10b.
+  `docs/poc/anthem-ca-new-plans/PROMPT.md` section 0b and AGENTS.md rule 10b.
   Explore with the persisted session instead of re-running the login.
 
 ---
@@ -22,7 +22,7 @@ submission through the **SAMx** portal, against the **production** site.
 
 Read first, in this order:
 
-1. `CLAUDE.md` — the repo's rules. Not optional.
+1. `AGENTS.md` — the repo's rules. Not optional.
 2. `automations/group-submission/uhc-np-new-plans/README.md` — the scope.
 3. `docs/poc/uhc-np-new-plans/process-steps.md` — the runbook.
 4. `automations/group-submission/uhc-np-new-plans/src/pages/case-start.page.ts`

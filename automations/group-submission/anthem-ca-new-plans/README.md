@@ -8,7 +8,7 @@ application.
 |---|---|
 | **Id** | `group-submission/anthem-ca-new-plans` |
 | **Domain** | `group-submission` |
-| **Owner** | @gusto/benefits-rpa-group-submission |
+| **Owner** | @gusto/bentech-rpa-group-submission |
 | **Session** | browser (Chromium, headless by default) + **MFA** |
 | **Queue** | `group-submission.anthem-ca-new-plans` (local JSON in phase 1) |
 | **Status** | **Every wizard step reached, up to and including `Document Checklist` (the last). Signed end to end once, deliberately, on 2026-09-03** |
@@ -62,7 +62,7 @@ the success condition.**
 
 With `allowSubmit: true` it goes on to sign, file, choose the member enrollment
 type and stop on `Document Checklist`. That has been done **twice**, each time
-deliberately and on the owner's explicit instruction — see CLAUDE.md rule 10:
+deliberately and on the owner's explicit instruction — see AGENTS.md rule 10:
 
 | Run | Group | Quote | Outcome |
 |---|---|---|---|
@@ -167,7 +167,7 @@ Five hand-run scripts once sat at this automation's root —
 not committed.
 
 Each one spread `allowSubmit: true` over the file config to get past the guard
-in CLAUDE.md rule 10, so that the last unmapped screens — Attestation, the
+in AGENTS.md rule 10, so that the last unmapped screens — Attestation, the
 application lock, the DocuSign ceremony — could be **reached and read** without
 arming every ordinary `pnpm rpa run`. Granting the override in a hand-run
 script rather than in `config.dev.json` was the right call and kept the
@@ -186,7 +186,7 @@ the repo.
 - `src/pages/quote-start.page.ts` — **the exemplar.** Every other screen should
   follow its precondition → action → postcondition shape, and every gate must
   use the **waiting** helpers (`visible`, `valueIs`) from `@rpa/core`, never
-  `isVisible()`. See CLAUDE.md rule 9b.
+  `isVisible()`. See AGENTS.md rule 9b.
 - `src/pages/portal-errors.ts` — `readPortalValidationError`, the locator that
   separates Business from System everywhere. Confirmed against the new platform:
   SLDS renders `Error: <field> is required.` in `.slds-form-element__help`.

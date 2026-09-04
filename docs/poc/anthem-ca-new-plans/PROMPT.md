@@ -12,7 +12,7 @@ new-plan group submission through the Anthem Producer portal, against the
 
 Read first, in this order:
 
-1. `CLAUDE.md` — the repo's rules. Not optional.
+1. `AGENTS.md` — the repo's rules. Not optional.
 2. `automations/group-submission/anthem-ca-new-plans/README.md` — the scope.
 3. `docs/poc/anthem-ca-new-plans/process-steps.md` — the runbook.
 4. `docs/poc/anthem-ca-new-plans/drift-log.md` — **21 verified entries.** What
@@ -70,7 +70,7 @@ Three things that will otherwise waste your time:
 Do not "improve" the MFA layer. In particular: `is:unread` must not go back
 into the query (this mailbox's filter marks mail read on arrival, so it matched
 0 of 21 labelled messages), and the watermark — not read-state — is what makes a
-code un-reusable. See CLAUDE.md rule 10b.
+code un-reusable. See AGENTS.md rule 10b.
 
 ## 1. The most important thing: the runbook is a hypothesis, not a specification
 
@@ -281,4 +281,4 @@ different answer?* Yes → System. No → Business.
 - Do not leave a locator you never verified without a `TODO(remap)` marker.
 - Do not rebuild or "harden" the MFA/session layer. Every guard added there for
   safety, other than the watermark, the sender allow-list and label scoping,
-  turned a recoverable situation into a discarded code. CLAUDE.md rule 10b.
+  turned a recoverable situation into a discarded code. AGENTS.md rule 10b.

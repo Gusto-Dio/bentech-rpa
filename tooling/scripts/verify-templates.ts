@@ -19,7 +19,7 @@ import { findRepoRoot } from '@rpa/core';
  */
 
 const CHECK_DOMAIN = 'template-check';
-const OWNER = '@gusto/benefits-rpa-platform';
+const OWNER = '@gusto/bentech-rpa-platform';
 
 const repoRoot = findRepoRoot();
 const checkDir = path.join(repoRoot, 'automations', CHECK_DOMAIN);

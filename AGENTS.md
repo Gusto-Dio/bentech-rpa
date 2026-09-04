@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 Guidance for AI agents working in this repository. Read this before making
 changes; it encodes decisions that are easy to violate accidentally and

@@ -11,8 +11,8 @@ if [ -z "${AUTOMATION}" ]; then
   {
     echo "No automation specified."
     echo
-    echo "  docker run --rm benefits-rpa:local <automation-id>"
-    echo "  docker run --rm -e AUTOMATION_ID=<automation-id> benefits-rpa:local"
+    echo "  docker run --rm bentech-rpa:local <automation-id>"
+    echo "  docker run --rm -e AUTOMATION_ID=<automation-id> bentech-rpa:local"
     echo
     echo "Available:"
   } >&2

@@ -81,7 +81,7 @@ and the Online Census Tool census** — which is why `readChecklist()` reports
 ## Why the automation stops here rather than uploading
 
 The Electronic Debit Form wants the group's **banking details**, and this PoC's
-payload carries references, not records (CLAUDE.md rule 2) — so there is nothing
+payload carries references, not records (AGENTS.md rule 2) — so there is nothing
 to put there and inventing it is not an option. The Online Census Tool slot wants
 the completed OCE census, which is the employee-enrollment stage and out of scope
 for a different reason. `attachDocument` is
