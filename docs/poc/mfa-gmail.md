@@ -396,8 +396,10 @@ token would otherwise be.
 - **Google removed plain-password IMAP.** `MFA_IMAP_APP_PASSWORD` must be an
   **app password**, which requires 2-Step Verification on the account — and a
   Workspace admin can disable app passwords for the whole org. Use
-  `MFA_IMAP_ACCESS_TOKEN` for XOAUTH2 instead; set exactly one, enforced at
-  startup by the config schema.
+  `MFA_IMAP_ACCESS_TOKEN` for XOAUTH2 instead. Setting both is allowed and the
+  **token wins**: the code default always supplies `passwordEnv` and the config
+  loader cannot remove a default key, so "both set" is the only way an
+  environment can ask for OAuth. Neither set fails at startup.
 - **IMAP can be turned off org-wide** in Google Admin. Confirm before debugging
   a connection failure — the provider's error message names all three causes.
 

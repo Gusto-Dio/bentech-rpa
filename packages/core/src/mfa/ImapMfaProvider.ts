@@ -178,6 +178,21 @@ export class ImapMfaProvider implements MfaCodeProvider, MfaMailbox {
      * Two steps on purpose. SEARCH returns UIDs and transfers no bodies, so the
      * expensive FETCH is limited to the newest MAX_CANDIDATES - see that
      * constant for why this matters on a busy shared mailbox.
+     *
+     * ── THE FETCH RANGE SHAPE IS LOAD-BEARING ──────────────────────────────
+     * `{ uid: '1,2,3' }` as the first argument, with `{ uid: true }` as
+     * options, is imapflow's SearchObject form. Getting it wrong does not
+     * throw - the client simply yields nothing, `search()` returns `[]`, and
+     * every poll times out as a SystemException while the unit tests stay
+     * green, because they run against a hand-written fake that cannot vouch
+     * for a third-party signature.
+     *
+     * So it was checked against the real server rather than reasoned about
+     * (2026-09-04, Gmail IMAP): the wide path fetched and parsed 211 messages,
+     * and the capped poll path fetched exactly 25 per poll. If this call is
+     * ever reshaped, re-run `rpa mfa check` and confirm the message count is
+     * non-zero - a passing test suite will not tell you.
+     * ───────────────────────────────────────────────────────────────────────
      */
     const found = await session.search({ since: sinceDate(request.since) }, { uid: true });
     const uids = (found === false ? [] : found).slice(-this.#maxCandidates);
@@ -294,6 +309,13 @@ export class ImapMfaProvider implements MfaCodeProvider, MfaMailbox {
   async #credentials(): Promise<ImapCredentials> {
     const user = await this.#secrets.require(this.#config.userEnv);
 
+    /**
+     * Token first, deliberately: `accessTokenEnv` WINS when both are configured.
+     * That is not a tie-break of convenience - the code default supplies
+     * `passwordEnv`, and the config loader cannot remove a default key, so
+     * "both set" is the only way an environment can ever ask for OAuth. The
+     * schema documents the same precedence.
+     */
     if (this.#config.accessTokenEnv !== undefined) {
       return { user, accessToken: await this.#secrets.require(this.#config.accessTokenEnv) };
     }

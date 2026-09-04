@@ -17,6 +17,17 @@ import type { MfaCodeRequest } from './MfaCodeProvider.ts';
  * No network and no IMAP server: the session is injected, which is the reason
  * `createSession` is a constructor option at all.
  *
+ * ── WHAT THIS FILE CANNOT PROVE ──────────────────────────────────────────────
+ * The fake mirrors imapflow's shape, so it cannot vouch for imapflow's actual
+ * signature. In particular a wrong FETCH range would not throw - the real client
+ * would yield nothing, `search()` would return `[]`, and every poll would time
+ * out while everything below still passed.
+ *
+ * That gap is closed by running against the real server, not by more mocking:
+ * `rpa mfa check` reports the message count, and a zero there is the tell. Done
+ * 2026-09-04 - 211 messages on the wide path, 25 per poll on the capped one.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
  * What is tested is the part that carries risk. The watermark, the sender
  * allow-list and the code extraction all live in the SHARED `mailboxPoll`
  * layer and are covered by its own tests, so what is left here is what this
@@ -343,6 +354,38 @@ describe('ImapMfaProvider - credentials and connection', () => {
 
     assert.equal(seen?.accessToken, 'ya29.token');
     assert.equal(seen?.pass, undefined);
+  });
+
+  /**
+   * THE REGRESSION. `DEFAULT_PLATFORM_CONFIG` supplies `passwordEnv`, and the
+   * config loader's deep-merge can add or replace a key but never remove one -
+   * so an environment asking for OAuth necessarily has BOTH set. The schema
+   * used to reject that as "set exactly one", which made the documented XOAUTH2
+   * path unreachable without editing source. Token wins.
+   */
+  it('prefers the access token when both credentials are configured', async () => {
+    const session = fakeSession([mail()]);
+    let seen: ImapCredentials | undefined;
+
+    const provider = new ImapMfaProvider({
+      config: { ...CONFIG, passwordEnv: 'MFA_IMAP_APP_PASSWORD', accessTokenEnv: 'MFA_IMAP_ACCESS_TOKEN' },
+      secrets: secretsWith({
+        MFA_IMAP_USER: 'ops@example.test',
+        MFA_IMAP_APP_PASSWORD: 'app-password',
+        MFA_IMAP_ACCESS_TOKEN: 'ya29.token',
+      }),
+      logger: silentLogger(),
+      pollIntervalMs: 1_000,
+      createSession: (credentials) => {
+        seen = credentials;
+        return session;
+      },
+    });
+
+    await provider.search(request());
+
+    assert.equal(seen?.accessToken, 'ya29.token');
+    assert.equal(seen?.pass, undefined, 'the app password must not also be sent');
   });
 
   it('reports a missing credential as a System failure, not a Business one', async () => {

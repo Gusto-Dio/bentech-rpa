@@ -183,17 +183,31 @@ export const imapConfigSchema = z
   })
   .superRefine((config, ctx) => {
     /**
-     * Exactly one credential, checked at startup rather than at the first login.
-     * Both set is ambiguous about which one authenticates; neither set fails
-     * three screens into a run, on a machine nobody is watching.
+     * At least one credential, checked at startup rather than at the first
+     * login - otherwise it fails three screens into a run, on a machine nobody
+     * is watching.
+     *
+     * ── WHY NOT "EXACTLY ONE" ──────────────────────────────────────────────
+     * It was, and that made the documented OAuth path IMPOSSIBLE to select.
+     * `DEFAULT_PLATFORM_CONFIG` supplies `passwordEnv`, and the config loader's
+     * deep-merge can add or replace a key but never remove one - so adding
+     * `accessTokenEnv` in a JSON layer left both present and every environment
+     * failed validation with "set exactly one". The escape hatch `.env.example`
+     * points at for the case a Workspace admin disables app passwords could not
+     * be reached without editing source.
+     *
+     * So both may be set, and **accessTokenEnv wins** - which is what
+     * `ImapMfaProvider.#credentials()` already did, checking the token first.
+     * The schema now matches the behaviour instead of forbidding it.
+     * ───────────────────────────────────────────────────────────────────────
      */
-    const supplied = [config.passwordEnv, config.accessTokenEnv].filter((value) => value !== undefined);
-    if (supplied.length !== 1) {
+    if (config.passwordEnv === undefined && config.accessTokenEnv === undefined) {
       ctx.addIssue({
         code: 'custom',
         path: ['passwordEnv'],
         message:
-          'set exactly one of passwordEnv (an app password) or accessTokenEnv (OAuth2 XOAUTH2)',
+          'set passwordEnv (a Google app password) or accessTokenEnv (OAuth2 XOAUTH2). ' +
+          'If both are set, accessTokenEnv is used',
       });
     }
   });
