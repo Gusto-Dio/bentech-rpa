@@ -50,13 +50,27 @@ look for `signedInVia: "reused"` in the log.
 
 ## 4. Test data
 
-All synthetic and already in the repo — nothing to request.
+All synthetic and already in the repo — nothing to request. Everything lives
+under `automations/group-submission/anthem-ca-new-plans/data/`:
 
-| | |
-|---|---|
-| Payload | [`data/seed/queue.json`](../../../automations/group-submission/anthem-ca-new-plans/data/seed/queue.json) — group `The Company LLC 7`, FEIN `881234573`, one owner, 4 medical plans |
-| Census | [`data/input/census-sample.csv`](../../../automations/group-submission/anthem-ca-new-plans/data/input/census-sample.csv) — 3 people, 1 waiving. SSNs use the `000-` prefix, which is never issued, so they are invalid by construction |
-| Template | `data/input/anthem-census-template.xlsx` — Anthem's own downloaded workbook |
+| File | Repo path | What's in it |
+|---|---|---|
+| **Payload** | [`data/seed/queue.json`](../../../automations/group-submission/anthem-ca-new-plans/data/seed/queue.json) | The queue item: group `The Company LLC 7`, FEIN `881234573`, one owner at 100%, 4 medical plans, contribution and waiting-period rules |
+| **Census** | [`data/input/census-sample.csv`](../../../automations/group-submission/anthem-ca-new-plans/data/input/census-sample.csv) | 3 people, 1 waiving medical. SSNs use the `000-` prefix, which is never issued, so they are invalid by construction |
+| **Template** | [`data/input/anthem-census-template.xlsx`](../../../automations/group-submission/anthem-ca-new-plans/data/input/anthem-census-template.xlsx) | Anthem's own downloaded workbook. The automation fills **this**, rather than building a file from scratch, because a malformed upload "succeeds" and renders an empty grid |
+
+Direct links, for pasting into a message:
+
+```
+https://github.com/Gusto/bentech-rpa/blob/main/automations/group-submission/anthem-ca-new-plans/data/seed/queue.json
+https://github.com/Gusto/bentech-rpa/blob/main/automations/group-submission/anthem-ca-new-plans/data/input/census-sample.csv
+https://github.com/Gusto/bentech-rpa/blob/main/automations/group-submission/anthem-ca-new-plans/data/input/anthem-census-template.xlsx
+```
+
+The census is read once per transaction and split into **enrolling** and
+**waiving** people — the template writer wants the enrolling ones, the
+eligibility screen wants the waiving ones. Two readers would eventually disagree
+about who is enrolling, which is the one thing that must not happen.
 
 **Never add a real group here.** Carry references, not records.
 
