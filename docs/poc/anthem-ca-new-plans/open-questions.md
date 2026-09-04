@@ -80,6 +80,21 @@ answer into the relevant doc.
       would be easier if there were
 - [ ] Who is allowed to flip `allowSubmit`, and under what circumstances?
 
+- [x] ~~**Does `Create Quote` need to tolerate a SAML re-challenge?**~~ —
+      **answered 2026-09-04: yes, and it now does.** The Salesforce community
+      session expires independently of the portal session, so the hand-off asks
+      for the password again even when sign-in reports `reused`. Neither the
+      container nor the route was the variable — only elapsed time.
+      `AnthemLoginPage.resolveSamlChallenge()` answers it (password only; the
+      device is already trusted, so no MFA code) and `QuoteStartPage` recovers
+      instead of failing. Verified live against a real challenge
+- [ ] **Is a full unattended container run viable?** Login and navigation are
+      proven in the container, and the SAML re-challenge that blocked it is now
+      handled. Everything past `Create Quote` is still unproven there, because
+      confirming it needs a write and production is frozen. Headed under xvfb
+      also costs more CPU and memory than headless, and has not been load tested
+      with concurrent runs
+
 ## Decisions deferred to phase 2
 
 - [ ] Orchestrator queue name and folder (the integration is built; see

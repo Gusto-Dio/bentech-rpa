@@ -125,7 +125,7 @@ pnpm exec playwright install chromium      # macOS; add --with-deps on Linux
 cp .env.example .env                       # then fill it from 1Password
 
 pnpm rpa doctor                            # will this machine actually run one
-pnpm check                                 # typecheck + validate + 357 tests
+pnpm check                                 # typecheck + validate + the full suite
 ```
 
 Node 24, pinned in `.nvmrc` / `mise.toml`.
@@ -163,6 +163,24 @@ processed: 1   success: 1   business: 0   system: 0   retries: 0
 ---
 
 ## Warnings
+
+### ⛔ Production is frozen — login and navigation only (from 2026-09-04)
+
+Mapping this PoC left seven signed applications, orphan quotes and duplicate
+accounts on Anthem production. Until the Benefits team confirms those are
+cleared, **do not run the automation against production at all** — not even with
+`allowSubmit: false`, because that still creates a real account and a real quote
+before it stops.
+
+Permitted, and enough to verify a machine works:
+
+```bash
+pnpm tsx tooling/scripts/check-portal-access.ts       # can we load the login page
+pnpm tsx tooling/scripts/check-portal-navigation.ts   # can we sign in and navigate
+```
+
+See [production-cleanup.md](production-cleanup.md) and rule 10a in
+[`AGENTS.md`](../../../AGENTS.md). Everything below applies once the freeze lifts.
 
 ### ⚠ `allowSubmit: true` signs and files a real application
 
@@ -209,10 +227,31 @@ encrypted TIN and a signed legal document. **Approved internal Slack workspace
 only** — not Slack Connect, not an external channel, not a personal drive. It is
 gitignored and deliberately not committed.
 
-### ⚠ Linux/headless is unresolved
+### ⚠ Headless is not an option for Anthem
 
-Anthem blocks headless Chromium, so the Ubuntu runtime has no working path yet —
-it needs `xvfb`. Today this is a headed, macOS-only process.
+Anthem serves `Access Denied` to headless Chromium — a 403 with an Akamai
+reference — and loads normally headed. `.env` sets `HEADLESS=false` for that
+reason, and on a laptop that just works.
+
+**In the container it also works now:** the image installs `xvfb` and the
+entrypoint starts a virtual display when `HEADLESS=false` and no `DISPLAY` is
+set, so this runs on a server with no screen:
+
+```bash
+HEADLESS=false docker compose run --rm rpa group-submission/anthem-ca-new-plans
+```
+
+Before trusting a new runtime, prove the carrier accepts it — `rpa doctor` only
+proves Chromium starts:
+
+```bash
+docker compose run --rm -e HEADLESS=false \
+  --entrypoint tooling/docker/with-display.sh rpa \
+  pnpm tsx tooling/scripts/check-portal-access.ts
+```
+
+Note that headed costs more CPU and memory than headless, and this has not been
+load tested with concurrent runs.
 
 ---
 

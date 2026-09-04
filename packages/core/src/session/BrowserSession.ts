@@ -26,6 +26,33 @@ export interface BrowserSessionOptions {
   videoDir?: string;
 }
 
+/**
+ * Browser config -> Chromium launch options.
+ *
+ * Exported because it was being reimplemented. The diagnostic scripts under
+ * `tooling/` each had their own copy of this translation, and the copies had
+ * already drifted: they added `--no-sandbox` but not `--disable-setuid-sandbox`,
+ * so a "same as a run" check was not launching the same browser a run does.
+ * One definition, three callers.
+ */
+export function chromiumLaunchOptions(config: BrowserConfig): {
+  headless: boolean;
+  slowMo: number;
+  args: string[];
+} {
+  const args = [...config.args];
+  if (config.noSandbox) {
+    /**
+     * Documented escape hatch for running as root in a container. The image
+     * shipped with this repo runs as the non-root pwuser precisely so this
+     * stays off: with the sandbox disabled, a compromised page inherits the
+     * container's privileges.
+     */
+    args.push('--no-sandbox', '--disable-setuid-sandbox');
+  }
+  return { headless: config.headless, slowMo: config.slowMoMs, args };
+}
+
 export class BrowserSession implements EvidenceCapableSession {
   readonly kind = 'browser';
 
@@ -60,25 +87,14 @@ export class BrowserSession implements EvidenceCapableSession {
   }
 
   async init(): Promise<void> {
-    const args = [...this.#config.args];
-    if (this.#config.noSandbox) {
-      // Documented escape hatch for running as root in a container. The image
-      // shipped with this repo runs as the non-root pwuser precisely so this
-      // stays off: with the sandbox disabled, a compromised page inherits the
-      // container's privileges.
-      args.push('--no-sandbox', '--disable-setuid-sandbox');
-    }
+    const launch = chromiumLaunchOptions(this.#config);
 
     this.#logger.debug(
-      { headless: this.#config.headless, noSandbox: this.#config.noSandbox, args },
+      { headless: launch.headless, noSandbox: this.#config.noSandbox, args: launch.args },
       'Launching Chromium',
     );
 
-    this.#browser = await chromium.launch({
-      headless: this.#config.headless,
-      slowMo: this.#config.slowMoMs,
-      args,
-    });
+    this.#browser = await chromium.launch(launch);
 
     const viewport = { width: this.#config.viewport.width, height: this.#config.viewport.height };
 

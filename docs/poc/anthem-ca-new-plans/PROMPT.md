@@ -57,8 +57,10 @@ gitignored, never copied, never printed.
 Three things that will otherwise waste your time:
 
 - **Anthem blocks headless Chromium** (`Access Denied`). `.env` sets
-  `HEADLESS=false`. The Ubuntu runtime has no display and is still blocked —
-  it needs `xvfb`, which is unfinished work, not your bug.
+  `HEADLESS=false`. **The container handles this now:** the image installs
+  `xvfb` and the entrypoint starts a virtual display when `HEADLESS=false`, so
+  `HEADLESS=false docker compose run --rm rpa <id>` works on a machine with no
+  screen. Verified inside the container - 403 headless, 200 headed.
 - **An orphaned browser holds the Gmail profile** and every run then fails with
   `the profile is already in use`, which has nothing to do with your change.
   Clear it: `ps -Ao pid=,command= | grep "user-data-dir=.*data/profiles" | awk '{print $1}' | xargs kill`

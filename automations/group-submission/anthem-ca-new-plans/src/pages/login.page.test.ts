@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, it } from 'node:test';
 import { isPortalUrl } from './login.page.ts';
 
@@ -52,5 +54,94 @@ describe('isPortalUrl', () => {
   it('returns false for anything unparseable instead of throwing', () => {
     assert.equal(isPortalUrl('not a url'), false);
     assert.equal(isPortalUrl(''), false);
+  });
+});
+
+/**
+ * `Create Quote` hands off to the Salesforce platform through Okta SAML, and
+ * that hop was observed landing back on Okta with a Password field instead of
+ * the platform. The host check that catches it must be parsed, not
+ * pattern-matched, for the same reason `isPortalUrl` must be: the two hosts
+ * quote each other in query strings, so a substring test matches the wrong page
+ * in both directions.
+ */
+describe('the Create Quote SAML guard', () => {
+  const source = readFileSync(path.join(import.meta.dirname, 'quote-start.page.ts'), 'utf8');
+  const body = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+
+  /**
+   * The happy path GOES THROUGH Okta: an auto-posting intermediate document
+   * bounces the browser on to the platform. So the host alone proves nothing,
+   * and deciding on it right after `domcontentloaded` would fail runs that were
+   * fine. A visible passcode field is what distinguishes a challenge.
+   */
+  it('requires a visible passcode field, not merely an Okta URL', () => {
+    assert.match(body, /OKTA_PASSCODE_FIELD/);
+    assert.match(body, /state:\s*'visible'/);
+  });
+
+  it('races leaving Okta against being challenged, so neither has to time out', () => {
+    assert.match(body, /Promise\.race/);
+  });
+
+  it('shares the Okta host with login.page.ts rather than duplicating the literal', () => {
+    assert.doesNotMatch(body, /'login\.broker\.anthem\.com'/);
+    assert.match(body, /OKTA_HOST/);
+  });
+
+  it('attempts recovery before giving up', () => {
+    assert.match(body, /resolveSaml\?\.\(/);
+  });
+
+  /**
+   * THE HOLE THIS CLOSES. The detection used to return 'platform' early when
+   * the page was not on Okta yet - and a fresh popup is `about:blank` or a
+   * pre-Okta redirect at its first `domcontentloaded`. A challenge arriving one
+   * redirect later was missed, and the guard reported success on exactly the
+   * case it exists to catch.
+   */
+  it('does not decide from the URL before the race runs', () => {
+    const detect = body.slice(body.indexOf('#awaitHandOff(platform'));
+    const upToRace = detect.slice(0, detect.indexOf('Promise.race'));
+    assert.doesNotMatch(upToRace, /return 'platform'/);
+  });
+
+  /**
+   * `about:blank` is "not Okta" too, so leaving Okta is not by itself success -
+   * treating it as such is what made the early return wrong.
+   */
+  it('requires an http(s) destination, not merely a non-Okta URL', () => {
+    assert.match(body, /protocol\.startsWith\('http'\)/);
+  });
+
+  it('re-confirms the destination after a successful recovery', () => {
+    const branch = body.slice(body.indexOf("=== 'challenged'"));
+    assert.match(branch.slice(0, 1600), /#isSettledOffOkta/);
+  });
+
+  /** "could not be recovered" with no reason is a poor thing to read at 03:00. */
+  it('keeps the underlying cause instead of collapsing it to a boolean', () => {
+    assert.match(body, /cause = thrown/);
+    assert.match(body, /#handOffFailed\([^)]*cause\)/);
+  });
+
+  /**
+   * BUSINESS, and this reverses an earlier version of this test.
+   *
+   * By the time the guard fails, `Create Quote` has already created a REAL
+   * quote. A SystemException is retryable, and the runner's recovery re-runs
+   * the whole transaction - re-clicking `Create Quote` and creating a SECOND
+   * quote for the same group, which then hits Anthem's "Application Matching
+   * Error" and fails anyway. That is the pathology behind this PoC's production
+   * cleanup list, so the item fails terminally instead.
+   */
+  it('fails an unrecovered hand-off as Business, because a retry would duplicate the quote', () => {
+    const guard = body.slice(body.indexOf('#handOffFailed(because'));
+    assert.match(guard.slice(0, 700), /BusinessException/);
+    assert.doesNotMatch(guard.slice(0, 700), /SystemException/);
+  });
+
+  it('says in the message that a quote already exists', () => {
+    assert.match(source, /ALREADY been created/);
   });
 });

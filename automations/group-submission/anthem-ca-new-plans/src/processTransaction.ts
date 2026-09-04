@@ -11,6 +11,7 @@ import { createStepContext, describeCurrentScreen } from './gate-evidence.ts';
 import type { Payload } from './payload.ts';
 import { resolveProducerIdentity } from './producer-identity.ts';
 import { CensusPage } from './pages/census.page.ts';
+import { AnthemLoginPage } from './pages/login.page.ts';
 import { EmployerApplicationPage } from './pages/employer-application.page.ts';
 import { GroupSetupPage } from './pages/group-setup.page.ts';
 import { MedicalPlansPage } from './pages/medical-plans.page.ts';
@@ -63,7 +64,18 @@ export async function processTransaction(
   const producer = await resolveProducerIdentity(ctx.secrets, config);
 
   // ── Producer Toolbox: reach the quoting platform ──
-  const quoteStart = new QuoteStartPage(ctx.page, steps);
+  /**
+   * The platform hand-off can ask for the password again: the Salesforce
+   * community session expires independently of the portal one, so this happens
+   * even when sign-in reported `reused`. Verified on host and in a container -
+   * only elapsed time matters. Recovering it here costs a password entry and no
+   * MFA code; failing instead would relaunch the browser and retry the whole
+   * transaction, creating a second real quote for the same group.
+   */
+  const login = new AnthemLoginPage(config);
+  const quoteStart = new QuoteStartPage(ctx.page, steps, async (platform) =>
+    login.resolveSamlChallenge(platform, await ctx.secrets.require(config.passwordEnv)),
+  );
   const platform = await quoteStart.startNewSmallGroupQuote();
 
   /**

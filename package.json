@@ -21,6 +21,7 @@
     "test": "node --import tsx --test \"packages/**/*.test.ts\" \"automations/**/*.test.ts\""
   },
   "devDependencies": {
+    "@auto/group-submission-shared": "workspace:*",
     "@playwright/mcp": "0.0.80",
     "@rpa/core": "workspace:*",
     "@types/node": "24.13.3",

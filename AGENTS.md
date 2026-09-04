@@ -65,6 +65,9 @@ pnpm verify:templates                      # scaffold every template, typecheck,
 # relaunching per command costs ~60s and loses the portal's place.
 pnpm tsx tooling/scripts/anthem-serve.ts &        # once; holds a signed-in browser
 pnpm tsx tooling/scripts/anthem-do.ts "c Start Quote"   # attach, act, dump, detach
+# Permitted under the production freeze (rule 10a) - both create nothing:
+pnpm tsx tooling/scripts/check-portal-access.ts        # can we load the login page
+pnpm tsx tooling/scripts/check-portal-navigation.ts    # sign in and reach the quoting platform
 pnpm tsx tooling/scripts/anthem-verify-checklist.ts "<group>" "<quote>"  # read-only: checks the
                                                   # Document Checklist locators on the live screen
 pkill -f anthem-serve                             # release it (orphans hold the profile)
@@ -206,6 +209,37 @@ Both carrier automations run against **production** portals with no sandbox.
 Signing (Anthem) and attestation (UHC) are irreversible. `allowSubmit` defaults
 to `false` and every method fronting a submit control must check it and throw a
 `BusinessException` naming the guard. Do not flip it to verify something — ask.
+
+### 10a. ⛔ ANTHEM PRODUCTION IS FROZEN (from 2026-09-04)
+
+**Until the Benefits team confirms the existing records are cleared, the only
+things permitted against Anthem production are SIGNING IN and NAVIGATING.**
+
+Nothing that creates or changes a record: no quote, no account, no application,
+no signature — regardless of `allowSubmit`. Note that `allowSubmit: false` is
+**not** sufficient to satisfy this: a run at that setting still creates a real
+account and a real quote before it parks on Attestation.
+
+Mapping the PoC left seven signed applications, at least five orphan quotes and
+duplicate accounts on production — see
+[production-cleanup.md](docs/poc/anthem-ca-new-plans/production-cleanup.md). The
+freeze holds until that is cleaned up and the risk is understood.
+
+What is still allowed, and enough for most work:
+
+```bash
+# Login and navigation only. Creates nothing.
+pnpm tsx tooling/scripts/check-portal-access.ts
+pnpm tsx tooling/scripts/check-portal-navigation.ts
+
+# Read-only reconnaissance against records that already exist
+pnpm tsx tooling/scripts/anthem-serve.ts &
+pnpm tsx tooling/scripts/anthem-do.ts "<command>"
+```
+
+`pnpm rpa run group-submission/anthem-ca-new-plans` is **not** allowed under the
+freeze, at any `allowSubmit` setting. Lift it only on the owner's explicit
+instruction, and say in the drift log when and why.
 
 ### 10b. Reading MFA mail: what is a security control and what is bookkeeping
 
@@ -353,7 +387,7 @@ the generator.
 | Gmail: a row reference is invalid a moment later | Rows carry **no stable thread id**; the `id` attribute (`:44`) is reassigned on every SPA re-render. Identify a row by content (sender + date title) and never by DOM id, and never fabricate a `#all/<id>` URL from one |
 | Gmail's basic HTML view (`/mail/u/0/h/`) 404s or redirects | Google **retired it in January 2024**. `docs/poc/mfa-gmail.md` originally specified it; `GmailUiMfaProvider` reads the modern UI instead, under protest. `GmailApiMfaProvider` is the only option that does not depend on Gmail's markup |
 | `--remote-debugging-port` is silently ignored by Chrome | Chrome **136+** refuses to debug the DEFAULT profile, specifically to stop software attaching to a real profile and reading its cookies. It needs a non-default `--user-data-dir`, which means a fresh sign-in - so an everyday Chrome session cannot be attached to. Copying the profile does not help either: macOS encrypts its cookies against a Keychain entry Playwright's Chromium cannot read |
-| `Access Denied` from `brokerportal.anthem.com` | Anthem blocks **headless** Chromium and loads normally headed. `.env` sets `HEADLESS=false` for that reason. **Unresolved for the Ubuntu runtime**, which has no display and will be blocked - it needs `xvfb` |
+| `Access Denied` from `brokerportal.anthem.com` | Anthem blocks **headless** Chromium and loads normally headed - a 403 with an Akamai reference. `.env` sets `HEADLESS=false` for that reason. **The container handles it**: the image installs `xvfb` and the entrypoint starts a virtual display when `HEADLESS=false` and no `DISPLAY` is set, so `HEADLESS=false docker compose run --rm rpa <id>` works on a server with no screen. Prove any new runtime with `tooling/scripts/check-portal-access.ts` before trusting it - `rpa doctor` proves Chromium starts, not that the carrier accepts it |
 | A URL check matches a page you are not on | OAuth flows quote each other's URLs in query parameters. Okta's authorize URL carries `redirect_uri=https://brokerportal.anthem.com/apps/ptb/_codexch`, so `waitForURL(/brokerportal\.anthem\.com\/apps\/ptb/)` succeeds while the browser sits on the LOGIN screen. This made the MFA step decide no code was needed and skip it. **Parse the URL** (`new URL(u).host`, `.pathname`) instead of pattern-matching the whole string |
 | A gate times out well before the budget you gave its locator | `step()` caps EVERY gate at the step's own `timeoutMs` (default 60s), so `visible(x, 300_000)` inside a step with no `timeoutMs` really waits 60s. Set `timeoutMs` on the step spec too. This cut Anthem's quote-documents page off mid-render and made the runner retry a transaction that had already created a real quote |
 | A gate is always false on a screen you can see | `isVisible()` does not wait. See rule 9b. Use `visible()` from `@rpa/core` |
