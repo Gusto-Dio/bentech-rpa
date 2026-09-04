@@ -4,6 +4,7 @@ import path from 'node:path';
 import type { Page } from 'playwright';
 import type { Payload } from '../payload.ts';
 import { DOCUMENT_TIMEOUT_MS, button } from './lightning.ts';
+import { readApplicationMatchingError } from './portal-errors.ts';
 
 /**
  * `Quote Review & Confirmation` - stage 6.
@@ -161,6 +162,13 @@ export class QuoteReviewPage {
           .waitForURL(/\/enrollgroupca/i, { timeout: DOCUMENT_TIMEOUT_MS })
           .then(() => true)
           .catch(() => false),
+      /**
+       * The one screen that can legitimately appear instead of the application.
+       * Without this, a group that already has an application in progress fails
+       * as a URL timeout - which reads like a broken locator and gets retried
+       * three times for an answer that will never change.
+       */
+      businessCheck: async () => readApplicationMatchingError(this.#page),
     });
   }
 }

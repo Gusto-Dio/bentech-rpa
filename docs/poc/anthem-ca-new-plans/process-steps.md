@@ -165,7 +165,9 @@ Its own wizard at `/broker/s/enrollgroupca-co?c__ContextId=<quoteId>`, headed
 ```
 Company Information · Ownership · Medical Coverage · Eligibility ·
 LOA/COBRA/Medical Leave · Prior Coverage · Electronic Access ·
-General Terms & Agreements · Attestation · Signature Format · Document Checklist
+General Terms & Agreements · Attestation · Signature Format ·
+Print and Sign Now · Send EFT Via DocuSign ·
+Member Enrollment Type · Document Checklist
 ```
 
 ### 7.1 Company Information
@@ -239,6 +241,48 @@ this step. Please review carefully."*
 > files a signed group application on the **production** portal under a real
 > producer's license. `allowSubmit` defaults to `false` for that reason.
 
+Verified end to end on 2026-09-03 (run `20260903T172508Z-d0d83a`): quote
+`02283813`, DocuSign envelope `F48EBEE7-7B7D-8733-8262-52A5404B04CF`, signed and
+filed. Step 5's "do not close the pop-up yet" is load-bearing — `Close`
+**discards** the envelope; `Finish` is what commits it.
+
+## Stage 9 — Member Enrollment Type  *(guarded by `allowSubmit`)*
+
+After the signature the portal shows *"You have successfully signed the
+document. Please select Continue to move to the next step."*
+
+Two rail steps sit between that and this one — **`Print and Sign Now`** and
+**`Send EFT Via DocuSign`**. Neither carries its name in the rail button's text
+(only the last three do), so they are invisible to a DOM dump and were finally
+identified from a screenshot. Both are crossed by a bare Continue and the rail
+marks them Completed, so neither demands input on this path.
+
+Choose how members will enrol. The picklist offers exactly **`Online Census
+Tool`, `Ease`, `Real-Time`, `Simple Census`, `API`** and starts at `--None--`.
+
+`memberEnrollmentType` in config, defaulting to **`Online Census Tool`** — the
+only value consistent with the `Online Census Enrollment (OCE)` already declared
+on Attestation (7.10). Note the two screens word their options differently.
+
+It is a **Vlocity combobox**, verified in-wizard on a real run. The choice also
+decides what the next step demands: `Online Census Tool` makes the checklist's
+matching row required, taking it from three required documents to four.
+
+## Stage 10 — Document Checklist — **the last step in the rail**
+
+23 upload slots, of which only three are required and Anthem attaches two of
+them itself. Full table, the `Submit` aria-label trap and the file-input
+mechanism are in [documents.md](documents.md).
+
+**This is where the automation stops.** It asserts the checklist belongs to this
+group — anchored on the `Quote` row's file name, which carries this
+transaction's quote number — writes the 23 rows to
+`artifacts/<runId>/anthem-document-checklist.json`, and ends the transaction.
+
+> The in-wizard screen and the standalone one are **not identical**. Do not
+> anchor on the standalone screen's `Application Name` field; it does not exist
+> in-wizard. See [documents.md](documents.md).
+
 ---
 
 ## Out of PoC scope
@@ -246,16 +290,31 @@ this step. Please review carefully."*
 - **Employee enrollment** — Online Census Tool, OCE census download, macro,
   paste from the Hippo OCE tab, plan selection per employee, waivers tab,
   validate and save
-- **Document upload** — 8 slots, see [documents.md](documents.md)
-- **Uploads Complete** and the confirmation screenshot
+- **Attaching documents** and pressing the checklist's `Submit`. The one
+  outstanding required slot is the Electronic Debit Form, which carries banking
+  details the payload deliberately does not hold. Both controls are implemented
+  behind the `allowSubmit` guard — see [documents.md](documents.md)
 
 ## Portal re-entry (useful for resume)
+
+> ⚠ **A group with an application already in progress cannot be re-submitted.**
+> Entering the wizard for it redirects to `/broker/s/inprogressapplication`,
+> headed **"Application Matching Error"**, whose only control is `Exit`. The
+> automation reports this as a BusinessException naming the existing
+> application; a human must finish or cancel it first. A second end-to-end test
+> run therefore needs a **different group**.
 
 1. Sign in → **Continue to Producer Toolbox**
 2. **Menu** → *Quotes* → Previous quotes → Small Group and State → View quotes
 3. **Search**, paste the group name or `payload.fein`
 4. Click the group → **Related** tab
 5. Click the in-progress quote or application
+
+To return to the **Document Checklist** specifically: the community home's
+*Recent Applications* card → the group's `Action` link → the Application record
+→ **`Upload Documents`**. That renders the same step standalone at
+`/broker/s/applicationrecordaction?c__ContextId=<applicationId>&c__isUploadDocument=true`,
+which is how it was mapped without walking the whole wizard.
 
 ## FAQ worth knowing
 

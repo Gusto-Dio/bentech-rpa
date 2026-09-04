@@ -4,15 +4,18 @@ import {
   findBasePolicy,
 } from '@auto/group-submission-shared';
 import { BusinessException, type WebTxContext } from '@rpa/core';
+import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { AutomationConfig } from './config.ts';
 import { createStepContext, describeCurrentScreen } from './gate-evidence.ts';
 import type { Payload } from './payload.ts';
+import { resolveProducerIdentity } from './producer-identity.ts';
 import { CensusPage } from './pages/census.page.ts';
 import { EmployerApplicationPage } from './pages/employer-application.page.ts';
 import { GroupSetupPage } from './pages/group-setup.page.ts';
 import { MedicalPlansPage } from './pages/medical-plans.page.ts';
 import { PortfoliosPage } from './pages/portfolios.page.ts';
+import { PostSignaturePage } from './pages/post-signature.page.ts';
 import { QuoteReviewPage } from './pages/quote-review.page.ts';
 import { QuoteStartPage } from './pages/quote-start.page.ts';
 import { SignaturePage } from './pages/signature.page.ts';
@@ -27,8 +30,9 @@ import { SignaturePage } from './pages/signature.page.ts';
  * longer exist. See docs/poc/anthem-ca-new-plans/drift-log.md.
  * ─────────────────────────────────────────────────────────────────────────────
  *
- * The PoC boundary is the END of the employer application. Employee enrollment,
- * document upload and Uploads Complete are out of scope.
+ * The PoC boundary is ARRIVING at `Document Checklist`, the last step in the
+ * rail. Attaching documents and pressing its Submit are out of scope, and both
+ * are fronted by the `allowSubmit` guard - see post-signature.page.ts.
  */
 export async function processTransaction(
   ctx: WebTxContext<Payload, AutomationConfig>,
@@ -51,6 +55,13 @@ export async function processTransaction(
 
   const steps = createStepContext(ctx);
 
+  /**
+   * Who files this. Resolved from `.env` via ctx.secrets, never from config -
+   * the values identify a real licensed producer and agency. See
+   * producer-identity.ts.
+   */
+  const producer = await resolveProducerIdentity(ctx.secrets, config);
+
   // ── Producer Toolbox: reach the quoting platform ──
   const quoteStart = new QuoteStartPage(ctx.page, steps);
   const platform = await quoteStart.startNewSmallGroupQuote();
@@ -62,7 +73,7 @@ export async function processTransaction(
   // Evidence must come from the tab we are actually driving, not the launcher.
   steps.followPage(platform);
 
-  const groupSetup = new GroupSetupPage(platform, steps, config);
+  const groupSetup = new GroupSetupPage(platform, steps, config, producer);
   await groupSetup.answerQualifyingQuestions();
   await groupSetup.enterGroupDetails(payload);
   // County renders only once the form is expanded, so it comes after.
@@ -107,7 +118,7 @@ export async function processTransaction(
   await review.startApplication();
 
   // ── Stage 7: the employer application ──
-  const application = new EmployerApplicationPage(platform, steps, config);
+  const application = new EmployerApplicationPage(platform, steps, config, producer);
   await application.fillCompanyInformation(payload);
   await application.fillOwnership(payload);
   await application.fillMedicalCoverage(payload, basePolicy.planCode);
@@ -156,9 +167,11 @@ export async function processTransaction(
    * uneditable. Everything after it signs and FILES a real group application
    * with Anthem, under a real producer's licence.
    *
-   * The signature locators are UNVERIFIED - see the header of
-   * signature.page.ts. The first supervised run through here should be expected
-   * to need corrections, and every divergence belongs in drift-log.md.
+   * The signature locators WERE verified end to end on 2026-09-03 (run
+   * 20260903T172508Z-d0d83a signed and filed the synthetic group's
+   * application). What follows the signature was mapped afterwards, from the
+   * filed application - see post-signature.page.ts for what is verified there
+   * and what is not.
    * ───────────────────────────────────────────────────────────────────────────
    */
   await application.lockApplication();
@@ -184,16 +197,55 @@ export async function processTransaction(
   );
 
   /**
-   * ── THE LAST TWO WIZARD STEPS ARE NOT MAPPED ────────────────────────────────
-   * `Member Enrollment Type` and `Document Checklist` follow the signature.
-   * They were out of scope for the PoC, so nothing here drives them.
-   *
-   * Rather than end blind, this records what the portal is showing once the
-   * signature has landed - the wizard rail, the headings, the fields and the
-   * buttons. It is the same reader the gate-failure hook uses, and it means the
-   * next pass can be written against real labels instead of costing another
-   * full run (~8 minutes and another production quote) just to look.
+   * ── THE LAST TWO WIZARD STEPS ───────────────────────────────────────────────
+   * `Member Enrollment Type`, then `Document Checklist`, which is the last step
+   * in the rail. Mapped 2026-09-03 by reopening the application the 17:25 run
+   * signed, so no MFA code and no extra quote were spent learning them.
    * ───────────────────────────────────────────────────────────────────────────
    */
-  await describeCurrentScreen(ctx, platform, 'post-signature');
+  const post = new PostSignaturePage(platform, steps, config);
+  await post.acknowledgeSignature();
+
+  /**
+   * `Print and Sign Now` and `Send EFT Via DocuSign`. Each screen is recorded
+   * before it is answered, because it is only reachable here: once the
+   * application is filed, re-entering the wizard is refused outright.
+   */
+  await post.crossPostSigningSteps((label) => describeCurrentScreen(ctx, platform, label));
+
+  await post.selectMemberEnrollmentType();
+  await post.reachDocumentChecklist(quoteNumber);
+
+  /**
+   * The checklist state IS the deliverable of the last step, so it is recorded
+   * rather than merely reached: which documents Anthem already holds, and which
+   * required one is still outstanding.
+   *
+   * Nothing is uploaded and nothing is submitted. The one outstanding required
+   * slot is the Electronic Debit Form, which carries the group's banking
+   * details - this payload deliberately carries references, not records.
+   */
+  const checklist = await post.readChecklist();
+  const outstanding = checklist
+    .filter((row) => row.required && row.fileName === '')
+    .map((row) => row.name);
+
+  await writeFile(
+    path.join(ctx.paths.runArtifactsDir, 'anthem-document-checklist.json'),
+    JSON.stringify({ quoteNumber, checklist }, null, 2),
+    'utf8',
+  );
+
+  ctx.logger.info(
+    {
+      companyName: payload.companyName,
+      quoteNumber,
+      slots: checklist.length,
+      attached: checklist.filter((row) => row.fileName !== '').map((row) => row.name),
+      outstandingRequired: outstanding,
+    },
+    'Reached Document Checklist - the last step of the Anthem wizard',
+  );
+
+  await describeCurrentScreen(ctx, platform, 'document-checklist');
 }

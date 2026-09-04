@@ -339,12 +339,27 @@ export function sameDigits(a: string, b: string): boolean {
  * stays on screen and repaints in place, so "the fields are still here" says
  * nothing. Statuses seen: `Untouched`, `In Progress`, `Completed`.
  */
-export async function stepIs(page: Page, step: string, status: 'In Progress' | 'Completed'): Promise<boolean> {
+export async function stepIs(
+  page: Page,
+  step: string,
+  status: 'In Progress' | 'Completed',
+  timeoutMs = SCREEN_TIMEOUT_MS,
+): Promise<boolean> {
   return visible(
     page.locator('button').filter({ hasText: new RegExp(`${escapeRegExp(step)}\\s*${status}`) }),
-    SCREEN_TIMEOUT_MS,
+    timeoutMs,
   );
 }
+
+/**
+ * How long to wait when POLLING the rail rather than asserting on it.
+ *
+ * The rail repaints within a second or two of a Continue landing, so a poll
+ * that is merely "not there yet" should not burn a 45s screen budget - a loop
+ * of four such polls exceeds the step's own timeout and fails a traversal that
+ * was working. Assertions still use the full `SCREEN_TIMEOUT_MS`.
+ */
+export const RAIL_POLL_TIMEOUT_MS = 4_000;
 
 /**
  * Dismisses an SLDS modal by clicking one of its buttons.

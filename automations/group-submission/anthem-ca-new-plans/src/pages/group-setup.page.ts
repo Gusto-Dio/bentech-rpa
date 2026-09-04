@@ -1,6 +1,7 @@
 import { BusinessException, step, textVisible, valueIs, visible, type StepContext } from '@rpa/core';
 import type { Page } from 'playwright';
 import type { AutomationConfig } from '../config.ts';
+import type { ProducerIdentity } from '../producer-identity.ts';
 import type { Payload } from '../payload.ts';
 import {
   FIELD_TIMEOUT_MS,
@@ -31,11 +32,18 @@ export class GroupSetupPage {
   readonly #page: Page;
   readonly #steps: StepContext;
   readonly #config: AutomationConfig;
+  readonly #producer: ProducerIdentity;
 
-  constructor(page: Page, steps: StepContext, config: AutomationConfig) {
+  constructor(
+    page: Page,
+    steps: StepContext,
+    config: AutomationConfig,
+    producer: ProducerIdentity,
+  ) {
     this.#page = page;
     this.#steps = steps;
     this.#config = config;
+    this.#producer = producer;
   }
 
   /**
@@ -248,7 +256,7 @@ export class GroupSetupPage {
    * `--None--` - which is what triggers the modal below.
    */
   async selectWritingAgent(): Promise<void> {
-    const producer = `${this.#config.producerFirstName} ${this.#config.producerLastName}`;
+    const producer = `${this.#producer.firstName} ${this.#producer.lastName}`;
 
     await step(this.#steps, {
       name: 'select the writing agent',
@@ -264,7 +272,7 @@ export class GroupSetupPage {
         await search.pressSequentially(producer, { delay: 60 });
         await this.#page
           .getByRole('listitem')
-          .filter({ hasText: this.#config.producerLastName })
+          .filter({ hasText: this.#producer.lastName })
           .first()
           .click();
       },
@@ -282,7 +290,7 @@ export class GroupSetupPage {
           .first()
           .inputValue()
           .catch(() => '');
-        return shown.toLowerCase().includes(this.#config.producerLastName.toLowerCase());
+        return shown.toLowerCase().includes(this.#producer.lastName.toLowerCase());
       },
       businessCheck: async () => readPortalValidationError(this.#page),
     });
@@ -295,7 +303,7 @@ export class GroupSetupPage {
       action: async () => undefined,
       alwaysRun: true,
       postcondition: async () =>
-        textVisible(this.#page, this.#config.paidAgencyCode, FIELD_TIMEOUT_MS),
+        textVisible(this.#page, this.#producer.agencyCode, FIELD_TIMEOUT_MS),
     });
   }
 

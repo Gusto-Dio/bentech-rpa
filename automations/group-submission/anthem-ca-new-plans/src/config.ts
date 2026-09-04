@@ -24,13 +24,30 @@ export const automationConfigSchema = z.strictObject({
   usernameEnv: z.string().min(1),
   passwordEnv: z.string().min(1),
 
-  // ── Producer identity, entered on the license & contract validation screen ──
-  /** The portal's broker search is by first name, then you pick from the results. */
-  producerFirstName: z.string().min(1),
-  producerLastName: z.string().min(1),
-  /** Selected under "Paid Agency". The code is part of the displayed option text. */
-  paidAgencyName: z.string().min(1),
-  paidAgencyCode: z.string().min(1),
+  /**
+   * ── Producer identity: NAMES of environment variables, never the values ──
+   *
+   * These identify a **real licensed producer** and a real agency, and the
+   * agency code doubles as that agency's encrypted TIN and the portal's account
+   * id. docs/poc/sanitization.md says none of it may be committed - so it took
+   * the same route the portal credentials already take: config holds the
+   * variable NAME, `.env` (gitignored) holds the value, and it is resolved
+   * through `ctx.secrets` at transaction start.
+   *
+   * They used to be plain values here, which meant the only way to run the
+   * automation was to paste a real person's licence identity into a tracked
+   * config file and remember to scrub it afterwards. That happened once and had
+   * to be undone across seven files.
+   */
+  /** The writing-agent typeahead needs the producer's full name; the portal returns it with a middle initial. */
+  producerFirstNameEnv: z.string().min(1),
+  producerLastNameEnv: z.string().min(1),
+  /**
+   * Paid Agency auto-populates from the writing agent, so this is only ever
+   * asserted, never typed. `paidAgencyName` used to sit alongside it and was
+   * read by nothing at all - one fewer real value to handle, so it is gone.
+   */
+  paidAgencyCodeEnv: z.string().min(1),
 
   // ── MFA ──
   /** Gmail label the carrier's MFA mail is filtered into. */
@@ -76,6 +93,27 @@ export const automationConfigSchema = z.strictObject({
   maxGroupNameLength: z.number().int().positive(),
   /** Anthem's hard limit, including spaces. Source doc FAQ. */
   maxAddressLength: z.number().int().positive(),
+
+  /**
+   * `Member Enrollment Type` - the wizard step between Signature Format and the
+   * Document Checklist.
+   *
+   * VERIFIED 2026-09-03 against the Application record's own picklist, which is
+   * the field this step writes: the five options are exactly the values below,
+   * and it sits at `--None--` until the step is answered.
+   *
+   * `Online Census Tool` is the default because it is the only value consistent
+   * with what this automation has already declared upstream - the Attestation
+   * screen selects "Online Census Enrollment (OCE)" for how the enrollment will
+   * be submitted, and the Document Checklist carries a matching `Online Census
+   * Tool` slot. Choosing anything else here would contradict the signed
+   * application.
+   *
+   * Config rather than payload for the same reason as `typeOfBusiness`: it is a
+   * property of how Gusto submits, not of the group. It becomes a payload field
+   * the moment a second enrollment channel is used.
+   */
+  memberEnrollmentType: z.enum(['Online Census Tool', 'Ease', 'Real-Time', 'Simple Census', 'API']),
 
   /**
    * ── SAFETY GUARD ──
