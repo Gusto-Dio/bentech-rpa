@@ -30,8 +30,10 @@ Two things needed no sanitizing, and it is worth knowing why so nobody
 |---|---|---|
 | Portal username | `ANTHEM_PORTAL_USERNAME` / `UHC_PORTAL_USERNAME` | `.env` |
 | Portal password | `ANTHEM_PORTAL_PASSWORD` / `UHC_PORTAL_PASSWORD` | `.env` |
-| Producer first/last name | `producerFirstName` / `producerLastName` = `REPLACE_ME` | `config/config.<env>.json` |
-| Paid agency name and code | `paidAgencyName` / `paidAgencyCode` = `REPLACE_ME` | Anthem config |
+| Producer first/last name (Anthem) | `producerFirstNameEnv` / `producerLastNameEnv` = the env-var NAMES | `.env` (gitignored) |
+| Paid agency code (Anthem) | `paidAgencyCodeEnv` = the env-var NAME | `.env` (gitignored) |
+| Paid agency **name** (Anthem) | removed — no code ever read it | — |
+| Producer first/last name (UHC) | `producerFirstName` / `producerLastName` = `REPLACE_ME` | `config/config.<env>.json` — **still the old shape**, see below |
 | General agent name | `generalAgentName` = `REPLACE_ME` | UHC config |
 | General agent franchise code | `generalAgentFranchiseCode` = `REPLACE_ME` | UHC config |
 | General agent email | `generalAgentEmail` = `REPLACE_ME` | UHC config |
@@ -86,3 +88,28 @@ fixtures, not in a comment, not in a screenshot committed as evidence. The
 
 If you need a second test group, invent one. If you need to reproduce a
 production failure, put the payload in the ticket, not in `data/seed/`.
+
+## The Anthem values moved to `.env` (2026-09-03, later the same day)
+
+Re-sanitizing them to `REPLACE_ME` left the automation **unrunnable**: the only
+way to drive it was to paste a real producer's licence identity back into
+`config/config.dev.json` — a tracked file — and remember to scrub it afterwards.
+That is a control which depends on nobody forgetting, and it had already been
+forgotten once, spreading the values across seven files.
+
+So the Anthem four took the route the portal credentials already take, which is
+the seam CLAUDE.md rule 3 describes: **config holds the name of an environment
+variable, `.env` holds the value.** `resolveProducerIdentity()` reads them
+through `ctx.secrets` at the start of each transaction, and a missing one is a
+`SystemException` at that point rather than a mystery failure on the
+writing-agent screen.
+
+`paidAgencyName` was dropped outright — nothing in the codebase read it, so it
+was one real value being handled for no purpose.
+
+> **UHC still has the old shape.** `producerFirstName` / `producerLastName`,
+> `generalAgentName`, `generalAgentEmail`, `generalAgentFranchiseCode`,
+> `pcisId` and `dummyPcpCode` are still plain `REPLACE_ME` config values in
+> `automations/group-submission/uhc-np-new-plans`. They have the same problem
+> and want the same fix; it was left alone rather than changed blind, since that
+> automation has not been driven this far.

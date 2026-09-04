@@ -64,8 +64,17 @@ answer into the relevant doc.
 
 - [x] ~~The real values for every `REPLACE_ME` in `config/config.dev.json`~~ — the
       Benefits team supplied the producer and paid-agency values and they are
-      verified against the live portal. They stay **out of the repo**: fill them
-      in locally from the runbook (see [../sanitization.md](../sanitization.md))
+      verified against the live portal. They now come from **`.env`** rather than
+      config: `ANTHEM_PRODUCER_FIRST_NAME`, `ANTHEM_PRODUCER_LAST_NAME`,
+      `ANTHEM_PAID_AGENCY_CODE`, resolved through `ctx.secrets`
+      (see [../sanitization.md](../sanitization.md))
+- [x] ~~**What is the default answer on `Send EFT Via DocuSign`?**~~ —
+      **answered 2026-09-03.** The screen asks *"Would you like to send the EFT
+      form through DocuSign?"* with Yes/No radios and **No pre-selected**. So the
+      earlier runs that crossed it with a bare Continue did *not* send EFT forms
+      to employers. The automation now answers No explicitly anyway — a default
+      is not a decision — and the screen is captured to
+      `artifacts/<runId>/<ref>-post-signing-screen-1.{json,png}` on every run
 - [ ] Which mailbox and Gmail label receive the MFA codes
 - [ ] Is there **any** carrier test group or sandbox? Everything about this PoC
       would be easier if there were

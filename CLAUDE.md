@@ -60,6 +60,8 @@ pnpm verify:templates                      # scaffold every template, typecheck,
 # relaunching per command costs ~60s and loses the portal's place.
 pnpm tsx tooling/scripts/anthem-serve.ts &        # once; holds a signed-in browser
 pnpm tsx tooling/scripts/anthem-do.ts "c Start Quote"   # attach, act, dump, detach
+pnpm tsx tooling/scripts/anthem-verify-checklist.ts "<group>" "<quote>"  # read-only: checks the
+                                                  # Document Checklist locators on the live screen
 pkill -f anthem-serve                             # release it (orphans hold the profile)
 
 pnpm rpa orchestrator check --env staging --automation <id>   # Orchestrator auth/scopes/folder/queue
@@ -355,9 +357,11 @@ the generator.
 | Salesforce/Vlocity: clicking a radio or checkbox times out | The `input` is **1x1 px behind `label.slds-radio__label`**; `elementFromPoint` returns the custom element, so actionability never passes. Click the **label** |
 | Salesforce/Vlocity: a combobox reads as empty although it is set | The value lives on **`data-value`**, not `value`. `inputValue()` returns `''`. Some are also `readonly` + `aria-disabled` and pre-filled (Anthem's `Benefit Period` is already `Calendar Year`) - clicking those times out; assert them instead |
 | Salesforce/Vlocity: generated ids | `vlocity-radio-0-1-110`, `comboboxId-604` - they carry a re-render counter and change. Never use an id or `name` as a locator |
-| A dump shows five controls on a screen with thirty | Lightning uses **shadow DOM**. `document.querySelectorAll` does not pierce it; walk `el.shadowRoot` recursively. Playwright's own locators DO pierce it, so this only affects hand-written DOM inspection |
+| A dump shows five controls on a screen with thirty, or a `page.evaluate` reads a full table as empty | Lightning uses **shadow DOM**. `document.querySelector(All)` does not pierce it; walk `el.shadowRoot` recursively. Playwright's own locators DO pierce it, so this only bites hand-written DOM traversal — but it bites it in automation code too, not just in dumps: `readChecklist` threw "the table read as empty" against a screen showing all 23 rows, which reads like a screen that had not rendered |
 | The `Anthem_NewPlans` VBA "is compiled" | **It is not.** The `.xlsm` stores it under standard MS-OVBA compression and the module decompresses intact. The Quoting transform is known exactly - see `docs/poc/excel-macros.md` |
 | A Playwright locator times out on an element that is plainly visible | Check the accessible name and role rather than the visible text. Real examples from Anthem: a button reading "Continue" whose accessible name is `Login` (from `aria-label`); an `input[type=submit]` whose name comes from `value="Next"`; a "Resend Code" **anchor with no `href`**, which therefore has no link role at all; and "Book of Business" appearing five times, once as a `span[role="button"]` menu toggle |
+| `getByRole('button', { name: <visible text> })` matches **zero** elements | An `aria-label` overrides the text content entirely. The Document Checklist's `Submit` carries `aria-label="documentCheckListSubmit"`, so a role lookup for "Submit" finds nothing at all — measured. Use `button()` from `lightning.ts`, which filters on text |
+| Anthem: a second run for the same group times out waiting for the application URL | The portal **redirects** to `/broker/s/inprogressapplication` — "Application Matching Error", only control `Exit` — because that group already has an application in progress. The text has no alert role, so `readPortalValidationError` misses it. `readApplicationMatchingError()` reports it as a Business failure; an end-to-end re-test needs a **different group** |
 
 ## Verifying before you claim something works
 

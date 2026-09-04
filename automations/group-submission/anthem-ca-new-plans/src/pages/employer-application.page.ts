@@ -2,6 +2,7 @@ import { BusinessException, step, valueIs, visible, type StepContext } from '@rp
 import type { HippoCensusRow } from '@auto/group-submission-shared';
 import type { Page } from 'playwright';
 import type { AutomationConfig } from '../config.ts';
+import type { ProducerIdentity } from '../producer-identity.ts';
 import {
   assertContinuationMatches,
   eligibleDecliningCount,
@@ -92,11 +93,18 @@ export class EmployerApplicationPage {
   readonly #page: Page;
   readonly #steps: StepContext;
   readonly #config: AutomationConfig;
+  readonly #producer: ProducerIdentity;
 
-  constructor(page: Page, steps: StepContext, config: AutomationConfig) {
+  constructor(
+    page: Page,
+    steps: StepContext,
+    config: AutomationConfig,
+    producer: ProducerIdentity,
+  ) {
     this.#page = page;
     this.#steps = steps;
     this.#config = config;
+    this.#producer = producer;
   }
 
   #continue(name: string): Promise<unknown> {
@@ -477,8 +485,8 @@ export class EmployerApplicationPage {
           .inputValue()
           .catch(() => '');
         return (
-          agency.toLowerCase().includes(this.#config.paidAgencyCode.toLowerCase()) &&
-          agent.toLowerCase().includes(this.#config.producerLastName.toLowerCase())
+          agency.toLowerCase().includes(this.#producer.agencyCode.toLowerCase()) &&
+          agent.toLowerCase().includes(this.#producer.lastName.toLowerCase())
         );
       },
     });

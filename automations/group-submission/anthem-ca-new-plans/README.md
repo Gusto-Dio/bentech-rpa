@@ -11,7 +11,7 @@ application.
 | **Owner** | @gusto/benefits-rpa-group-submission |
 | **Session** | browser (Chromium, headless by default) + **MFA** |
 | **Queue** | `group-submission.anthem-ca-new-plans` (local JSON in phase 1) |
-| **Status** | **Login + stage 2 verified live. Stages 2.2–8 being re-mapped: the portal moved platform** |
+| **Status** | **Every wizard step reached, up to and including `Document Checklist` (the last). Signed end to end once, deliberately, on 2026-09-03** |
 
 ## Read this before running it
 
@@ -49,13 +49,48 @@ This runs against the **production Anthem portal**. There is no sandbox.
 | 5 | `Select Medical Plans` | **working**, via metal-level filtering |
 | 6 | `Quote Review & Confirmation` + Member-Rated PDF | **working** |
 | 7 | Employer application — all nine editable screens through `Attestation` | **working** |
-| 8 | `Signature Format` → DocuSign | **not mapped, and deliberately so**: mapping it means signing. Guarded by `allowSubmit` |
-| — | Employee enrollment, document upload, Uploads Complete | **out of scope** |
+| 8 | `Signature Format` → DocuSign ceremony | **working**, verified once end to end on 2026-09-03. Guarded by `allowSubmit` |
+| 9 | `Send EFT Via DocuSign` | **working**, mapped and answered **No** explicitly (`*Would you like to send the EFT form through DocuSign?`). `Print and Sign Now` sits beside it in the rail but is completed by the signing ceremony itself, so only one screen is crossed |
+| 10 | `Member Enrollment Type` | **working**, verified in-wizard as a combobox. Guarded |
+| 11 | `Document Checklist` — the last step in the rail | **working**, verified in-wizard on a clean run: reached, confirmed against this transaction's quote number, and all 23 rows recorded. Guarded |
+| — | Attaching documents · the checklist's `Submit` · employee enrollment | **out of scope**, and fronted by the guard |
 
-A full unattended run reaches the end of `Attestation` — the last screen the
-portal lets you change — and stops on the `allowSubmit` BusinessException.
-**That exception is the success condition.** Measured on 2026-09-03: 80 steps,
-0 system failures, 0 retries, `signedInVia: "reused"`.
+With `allowSubmit: false` — the default, and how it should normally run — a full
+unattended run reaches the end of `Attestation`, the last screen the portal lets
+you change, and stops on the `allowSubmit` BusinessException. **That exception is
+the success condition.**
+
+With `allowSubmit: true` it goes on to sign, file, choose the member enrollment
+type and stop on `Document Checklist`. That has been done **twice**, each time
+deliberately and on the owner's explicit instruction — see CLAUDE.md rule 10:
+
+| Run | Group | Quote | Outcome |
+|---|---|---|---|
+| `20260903T172508Z-d0d83a` | The Company LLC | `02283813` | 89 steps, 8m38s, signed and filed, `success: 1` |
+| `20260903T190608Z-093764` | The Company LLC 2 | `02284005` | signed and filed, reached `Document Checklist`; final postcondition failed — read a field that only exists on the standalone screen |
+| `20260903T193202Z-f0806d` | The Company LLC 3 | `02284033` | signed and filed, reached `Document Checklist`; final postcondition failed again — read the rows once, before the portal had built them |
+| `20260903T195143Z-839b76` | The Company LLC 4 | `02284068` | clean end to end — 94 steps, 10m36s, `success: 1` |
+| `20260903T213924Z-ee0266` | The Company LLC 5 | `02284174` | signed and filed, then reported a **business failure one step later** — the post-signature *success* toast was read as a validation error |
+| `20260903T215139Z-1d3674` | The Company LLC 6 | `02284186` | **clean end to end with the EFT question answered** — 94 steps, 9m51s, `processed: 1 success: 1 business: 0 system: 0 retries: 0`, `eftQuestionAnswered: true` |
+
+Both earlier failures were ours, not the portal's, and in both the evidence
+screenshot shows the automation exactly where it belonged. The second cause is
+the more instructive one: Anthem paints the checklist's table header immediately
+(`0 out of 0 documents uploaded`) and fills the 23 rows a few seconds later.
+Measured from a cold navigation — 0 rows on arrival, the quote row present after
+**4.68s**, then 23. The gate is a waiting locator now, not a snapshot.
+
+The fourth run is the one to trust: every step from login to `Document
+Checklist` executed in-wizard against production with no retries and no system
+failures, ending with the checklist recorded to
+`artifacts/<runId>/anthem-document-checklist.json` — 23 slots, `Employer
+Application` and `Quote` attached by Anthem, and `Electronic Debit Form` plus
+`Online Census Tool` still outstanding.
+
+⚠ A group that already has an application in progress **cannot** be run again:
+Anthem redirects to an "Application Matching Error" page whose only control is
+`Exit`. The automation reports that as a BusinessException; a second end-to-end
+run needs a different group.
 
 Known gaps — see
 [open-questions.md](../../../docs/poc/anthem-ca-new-plans/open-questions.md):
@@ -94,24 +129,35 @@ pnpm rpa queue group-submission/anthem-ca-new-plans --reset
 ```
 
 Initialize signs in and **reuses the stored session** when one is valid — look
-for `signedInVia: "reused"` in the log, which means no MFA code was spent. A run
-currently gets through stage 2.1 and then stops where the page objects for the
-new Salesforce platform are still to be written.
+for `signedInVia: "reused"` in the log, which means no MFA code was spent.
 
 ## Credentials
 
 `.env` needs `ANTHEM_PORTAL_USERNAME` and `ANTHEM_PORTAL_PASSWORD`. Config holds
 only the variable *names*.
 
-`producerFirstName`, `producerLastName`, `paidAgencyName` and `paidAgencyCode`
-ship as `REPLACE_ME`. They identify a **real named producer** and a real agency,
-and the agency code doubles as the agency's encrypted TIN and the dashboard
-account id — so they are not committed. Get them from the Benefits runbook and
-fill them in locally. The values were verified against the live portal, and two
-details cost time: the portal resolves the producer **with a middle initial**,
-so the config's `first last` is not the displayed string, and the paid agency
-**auto-populates** from the writing agent rather than being selected.
-See [docs/poc/sanitization.md](../../../docs/poc/sanitization.md).
+It also needs three more, and for the same reason — they identify a **real
+licensed producer** and a real agency whose code doubles as its encrypted TIN
+and the portal's account id:
+
+```
+ANTHEM_PRODUCER_FIRST_NAME=
+ANTHEM_PRODUCER_LAST_NAME=
+ANTHEM_PAID_AGENCY_CODE=
+```
+
+Get them from the Benefits runbook. Config carries only
+`producerFirstNameEnv` / `producerLastNameEnv` / `paidAgencyCodeEnv` — the
+variable *names* — so nothing sensitive is ever in a tracked file. A missing one
+is a `SystemException` at the start of the transaction rather than a confusing
+failure on the writing-agent screen.
+
+Two details about these values cost real time: the portal resolves the producer
+**with a middle initial**, so `first last` is not the displayed string (the
+postcondition anchors on the surname), and the paid agency **auto-populates**
+from the writing agent rather than being selected — the automation asserts it
+instead of typing it. See
+[docs/poc/sanitization.md](../../../docs/poc/sanitization.md).
 
 ## The supervised signature drivers are NOT in the repo
 

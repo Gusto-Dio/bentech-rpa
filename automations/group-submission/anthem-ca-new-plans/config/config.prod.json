@@ -1,5 +1,5 @@
 {
-  "$comment": "Layer 4, production. Anthem CA settings. Credentials are env-var NAMES only. The REPLACE_ME values identify the writing agent and paid agency on the license & contract validation screen. They are a real named producer and a real agency code, so they are NOT committed - get them from the Benefits runbook. See docs/poc/sanitization.md.",
+  "$comment": "Layer 4, production. Anthem CA settings. Credentials are env-var NAMES only. The producer/agency values are env-var NAMES too: they identify a real licensed producer and a real agency code (which doubles as that agency's encrypted TIN), so they live in .env and never in this file. Get them from the Benefits runbook. See docs/poc/sanitization.md.",
   "$comment_transactionTimeoutMs": "This process is a twelve-step Salesforce wizard against a production portal: group setup, portfolios, a census download/upload round-trip, plan selection, quote DOCUMENT GENERATION (30-45s on its own) and a seven-screen employer application. The 120s platform default expires somewhere around the census and reports it as a precondition failure on whatever step was unlucky - which reads like a broken locator and is not. 15 minutes is sized to the real process, not padded.",
   "transactionTimeoutMs": 900000,
 
@@ -10,10 +10,9 @@
     "usernameEnv": "ANTHEM_PORTAL_USERNAME",
     "passwordEnv": "ANTHEM_PORTAL_PASSWORD",
 
-    "producerFirstName": "REPLACE_ME",
-    "producerLastName": "REPLACE_ME",
-    "paidAgencyName": "REPLACE_ME",
-    "paidAgencyCode": "REPLACE_ME",
+    "producerFirstNameEnv": "ANTHEM_PRODUCER_FIRST_NAME",
+    "producerLastNameEnv": "ANTHEM_PRODUCER_LAST_NAME",
+    "paidAgencyCodeEnv": "ANTHEM_PAID_AGENCY_CODE",
 
     "mfaLabel": "Access Token (Anthem)",
     "mfaSenderAllowList": ["broker.anthem.com", "carrierops@gusto.com"],
@@ -29,6 +28,11 @@
 
     "maxGroupNameLength": 50,
     "maxAddressLength": 27,
+
+    "$comment_memberEnrollmentType": "The wizard step after Signature Format. Verified 2026-09-03: the Application record picklist offers exactly Online Census Tool, Ease, Real-Time, Simple Census, API. Online Census Tool is the only value consistent with the Attestation screen, which declares Online Census Enrollment (OCE).",
+
+    "memberEnrollmentType": "Online Census Tool",
+
 
     "$comment_allowSubmit": "Leave false. The PoC runs against the production portal; true would sign and file a real application.",
     "allowSubmit": false
