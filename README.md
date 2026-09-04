@@ -1,5 +1,16 @@
 # bentech-rpa
 
+> **This repo is a proof of concept. It is not intended to go to production.**
+> It exists to prove one thing: that carrier-portal work can run unattended with
+> the resilience contract we relied on in UiPath's REFramework. "Working and
+> verified end to end" in the table below means verified *as a PoC* — nothing
+> here is approved to carry production workloads, and taking any of it further
+> requires a deliberate hardening and security review first.
+>
+> Note the distinction, because the word does double duty here: the repo is not
+> production, but the carrier *portals* the PoCs drive are real production
+> portals with no sandbox. That is exactly why `allowSubmit` stays `false`.
+
 An RPA platform for **unattended process automation** on Playwright + TypeScript,
 built to carry over the resilience contract we relied on in UiPath's REFramework:
 a state machine, a work queue, a hard split between business and system
