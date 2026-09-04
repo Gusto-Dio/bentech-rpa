@@ -39,6 +39,7 @@ export const ENV_OVERRIDES: Readonly<Record<string, string>> = {
   TRANSACTION_TIMEOUT_MS: 'transactionTimeoutMs',
   QUEUE_PROVIDER: 'queue.provider',
   QUEUE_MODE: 'queue.mode',
+  MFA_PROVIDER: 'mfa.provider',
   HEADLESS: 'browser.headless',
   SLOW_MO_MS: 'browser.slowMoMs',
   CHROMIUM_NO_SANDBOX: 'browser.noSandbox',

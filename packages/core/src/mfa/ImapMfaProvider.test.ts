@@ -87,6 +87,8 @@ interface FakeSession extends ImapSession {
   opened: string[];
   flagged: unknown[];
   connects: number;
+  /** The uid range FETCH was asked for, so the cap can be asserted. */
+  fetchedRanges: unknown[];
 }
 
 function fakeSession(messages: ImapFetchedMessage[], behaviour: {
@@ -98,6 +100,8 @@ function fakeSession(messages: ImapFetchedMessage[], behaviour: {
     opened: [],
     flagged: [],
     connects: 0,
+    fetchedRanges: [],
+    search: async () => messages.map((message) => message.uid ?? 0),
     connect: async () => {
       session.connects += 1;
       if (behaviour.connectThrows === true) throw new Error('auth failed');
@@ -107,9 +111,15 @@ function fakeSession(messages: ImapFetchedMessage[], behaviour: {
       if (behaviour.openThrows === true) throw new Error('no such mailbox');
       return {};
     },
-    fetch: (_range, _query) => {
+    fetch: (range, _query) => {
+      session.fetchedRanges.push(range);
+      const wanted = String((range as { uid?: string }).uid ?? '')
+        .split(',')
+        .filter((uid) => uid !== '');
       async function* iterate(): AsyncGenerator<ImapFetchedMessage> {
-        for (const message of messages) yield message;
+        for (const message of messages) {
+          if (wanted.includes(String(message.uid))) yield message;
+        }
       }
       return iterate();
     },
@@ -213,6 +223,34 @@ describe('ImapMfaProvider - reading a message', () => {
     const messages = await providerWith(fakeSession([older, newer])).search(request());
 
     assert.deepEqual(messages.map((message) => message.id), ['2', '1']);
+  });
+
+  /**
+   * Measured on the real mailbox 2026-09-04: 209 messages in the search window,
+   * 171 of them forwarded codes. Fetching every body on every poll, at a 5s
+   * interval, means hundreds of full messages per code and a poll slower than
+   * its own interval. SEARCH transfers no bodies; only the newest handful are
+   * fetched.
+   */
+  it('fetches only the newest candidates, not every message in the window', async () => {
+    const many = Array.from({ length: 60 }, (_, index) =>
+      mail({ uid: index + 1, internalDate: new Date(Date.parse('2026-09-04T10:00:00Z') + index * 1_000) }),
+    );
+    const session = fakeSession(many);
+
+    const messages = await providerWith(session).search(request());
+
+    assert.equal(messages.length, 25, 'the fetch must be capped');
+    assert.equal(session.fetchedRanges.length, 1, 'one FETCH, not one per message');
+    // The newest, not the oldest: uid 60 is present and uid 1 is not.
+    assert.ok(messages.some((message) => message.id === '60'));
+    assert.ok(!messages.some((message) => message.id === '1'));
+  });
+
+  it('does not fetch at all when the search matches nothing', async () => {
+    const session = fakeSession([]);
+    assert.deepEqual(await providerWith(session).search(request()), []);
+    assert.equal(session.fetchedRanges.length, 0);
   });
 
   it('skips a message with no date rather than guessing one', async () => {

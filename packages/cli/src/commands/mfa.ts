@@ -151,6 +151,14 @@ async function checkOverImap(config: MfaConfig, label: string, days: number): Pr
     secrets: new SecretResolver(),
     logger,
     pollIntervalMs: 5_000,
+    /**
+     * Far above the provider's polling cap on purpose. A run wants ONE recent
+     * code and must not drag hundreds of bodies every five seconds; this command
+     * runs once and its whole job is to show WHO sends to the label, which a
+     * cap of 25 hides on a busy mailbox - measured, it dropped
+     * noreply@broker.anthem.com from the report entirely.
+     */
+    maxCandidates: 400,
   });
 
   try {
@@ -183,7 +191,7 @@ async function checkOverImap(config: MfaConfig, label: string, days: number): Pr
       senders.set(address, entry);
     }
 
-    line(`  messages : ${messages.length}`);
+    line(`  messages : ${messages.length}${messages.length >= 400 ? style.dim(' (capped)') : ''}`);
     line();
     line('  Senders in this label');
     line(style.dim('    address                                                  msgs   with a 6-digit code'));

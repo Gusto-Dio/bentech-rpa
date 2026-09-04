@@ -46,6 +46,8 @@ import { extractTextFromRfc822 } from './mimeText.ts';
  */
 export interface ImapSession {
   connect(): Promise<void>;
+  /** UIDs matching the query, ascending. Cheap: no bodies are transferred. */
+  search(query: { since?: Date }, options?: { uid?: boolean }): Promise<number[] | false>;
   /** Throws when the mailbox does not exist - which is how a mistyped label fails loudly. */
   mailboxOpen(path: string, options?: { readOnly?: boolean }): Promise<unknown>;
   fetch(
@@ -76,6 +78,13 @@ export interface ImapMfaProviderOptions {
   pollIntervalMs: number;
   /** Injected in tests. Defaults to a real ImapFlow session. */
   createSession?: (credentials: ImapCredentials, config: ImapConfig) => ImapSession;
+  /**
+   * How many bodies to fetch per poll. Defaults to MAX_CANDIDATES.
+   *
+   * Raised by `rpa mfa check`, which runs once interactively and wants a wide
+   * survey of who is sending, rather than every five seconds wanting one code.
+   */
+  maxCandidates?: number;
   abortSignal?: AbortSignal;
 }
 
@@ -85,6 +94,22 @@ export interface ImapCredentials {
   pass?: string;
   accessToken?: string;
 }
+
+/**
+ * How many messages to pull bodies for, newest first.
+ *
+ * Not a nicety. The label this reads is a SHARED Benefits Operations mailbox
+ * and it is busy - measured 2026-09-04: **209 messages in the search window**,
+ * 171 of them forwarded codes. Fetching every body on every poll, at a 5s poll
+ * interval, means hundreds of full messages per code and a poll that takes
+ * longer than the interval itself. `GmailApiMfaProvider` caps at 10 for the
+ * same reason.
+ *
+ * 25 rather than 10 because this mailbox receives ~100/day, so 25 still covers
+ * several hours of arrivals - comfortably more than the seconds between
+ * requesting a code and reading it, which is all the window that matters.
+ */
+const MAX_CANDIDATES = 25;
 
 /**
  * How far back to ask the server for mail.
@@ -111,6 +136,7 @@ export class ImapMfaProvider implements MfaCodeProvider, MfaMailbox {
   readonly #logger: Logger;
   readonly #pollIntervalMs: number;
   readonly #createSession: (credentials: ImapCredentials, config: ImapConfig) => ImapSession;
+  readonly #maxCandidates: number;
   readonly #abortSignal: AbortSignal | undefined;
 
   #session: ImapSession | undefined;
@@ -123,6 +149,7 @@ export class ImapMfaProvider implements MfaCodeProvider, MfaMailbox {
     this.#logger = options.logger;
     this.#pollIntervalMs = options.pollIntervalMs;
     this.#createSession = options.createSession ?? defaultCreateSession;
+    this.#maxCandidates = options.maxCandidates ?? MAX_CANDIDATES;
     this.#abortSignal = options.abortSignal;
   }
 
@@ -147,10 +174,27 @@ export class ImapMfaProvider implements MfaCodeProvider, MfaMailbox {
   async search(request: MfaCodeRequest): Promise<readonly MfaMessage[]> {
     const session = await this.#open(request.matcher.label);
 
+    /**
+     * Two steps on purpose. SEARCH returns UIDs and transfers no bodies, so the
+     * expensive FETCH is limited to the newest MAX_CANDIDATES - see that
+     * constant for why this matters on a busy shared mailbox.
+     */
+    const found = await session.search({ since: sinceDate(request.since) }, { uid: true });
+    const uids = (found === false ? [] : found).slice(-this.#maxCandidates);
+
+    if (uids.length === 0) {
+      this.#logger.debug(
+        { label: request.matcher.label },
+        'No mail in the MFA label within the search window',
+      );
+      return [];
+    }
+
     const messages: MfaMessage[] = [];
     for await (const message of session.fetch(
-      { since: sinceDate(request.since) },
+      { uid: uids.join(',') },
       { uid: true, envelope: true, internalDate: true, source: true },
+      { uid: true },
     )) {
       const mapped = toMfaMessage(message);
       if (mapped !== undefined) messages.push(mapped);
@@ -161,7 +205,7 @@ export class ImapMfaProvider implements MfaCodeProvider, MfaMailbox {
     messages.sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());
 
     this.#logger.debug(
-      { candidates: messages.length, label: request.matcher.label },
+      { candidates: messages.length, matched: found === false ? 0 : found.length, label: request.matcher.label },
       'Listed candidates in the MFA label over IMAP',
     );
 

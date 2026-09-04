@@ -3,8 +3,8 @@
   "logLevel": "debug",
   "keepArtifactsOnSuccess": false,
 
-  "$comment_mfa": "A dedicated Chromium profile, signed in once by a human: pnpm rpa mfa seed-profile. NOT the everyday Chrome profile - Chrome 136+ refuses to expose a debugging port for the default profile, so an existing session cannot be attached to. Gmail's basic HTML view was retired in January 2024, so this reads the modern UI and its selectors are a liability; gmail-api is the only headless-safe option and remains the production target.",
+  "$comment_mfa": "IMAP against the mailbox label, because it needs no browser and so works headless and on Linux - the gmail-profile/gmail-cdp providers drive Gmail's own JS UI, need a display, and depend on markup that has broken repeatedly. INTERIM: an IMAP credential reaches the whole mailbox rather than one label, so gmail-api is still the production target. Trade-off and removal condition in docs/poc/mfa-gmail.md. Override per run with MFA_PROVIDER=gmail-profile.",
   "mfa": {
-    "provider": "gmail-profile"
+    "provider": "imap"
   }
 }
