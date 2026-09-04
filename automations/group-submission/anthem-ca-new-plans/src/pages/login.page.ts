@@ -79,8 +79,19 @@ function signedInLandmark(page: Page): ReturnType<Page['getByText']> {
   return page.getByText('Book of Business').first();
 }
 
-/** Okta, which fronts both the initial password screen and the SAML hand-off. */
-const OKTA_HOST = 'login.broker.anthem.com';
+/**
+ * Okta, which fronts both the initial password screen and the SAML hand-off.
+ *
+ * Exported because `quote-start.page.ts` needs the same constant: its copy
+ * detects that the hand-off ARRIVED on Okta, this file's detects that
+ * `resolveSamlChallenge` has LEFT it. Two halves of one protocol, so two
+ * literals would let arrival and departure disagree if Anthem ever moves the
+ * host.
+ */
+export const OKTA_HOST = 'login.broker.anthem.com';
+
+/** Okta's field name, reused for both the password and the one-time code. */
+export const OKTA_PASSCODE_FIELD = 'input[name="credentials.passcode"]';
 
 export class AnthemLoginPage implements CarrierLoginFlow {
   readonly #config: AutomationConfig;

@@ -1,8 +1,6 @@
-import { createCarrierPortalSession, type CarrierPortalSession } from '@auto/group-submission-shared';
-import { createMfaProvider, type MfaMatcher, type WebInitContext } from '@rpa/core';
-import path from 'node:path';
+import { createMfaProvider, type WebInitContext } from '@rpa/core';
 import type { AutomationConfig } from './config.ts';
-import { AnthemLoginPage } from './pages/login.page.ts';
+import { createAnthemSession } from './session.ts';
 
 /**
  * REFramework's InitAllSettings + InitAllApplications for Anthem CA.
@@ -13,34 +11,11 @@ import { AnthemLoginPage } from './pages/login.page.ts';
  * only performs a full login (and consumes an MFA code) when the probe fails.
  */
 export async function initialize(ctx: WebInitContext<AutomationConfig>): Promise<void> {
-  const {
-    portalUrl,
-    usernameEnv,
-    passwordEnv,
-    mfaLabel,
-    mfaSenderAllowList,
-    mfaSubjectContains,
-    mfaTimeoutMs,
-    mfaResendAfterMs,
-    mfaMaxResends,
-  } = ctx.config.automation;
-
-  const matcher: MfaMatcher = {
-    label: mfaLabel,
-    fromAllowList: mfaSenderAllowList,
-    // Confirmed six digits against two live codes read from the real mailbox.
-    codePattern: /\b(\d{6})\b/,
-    // Anthem's MFA screen states the subject verbatim, so this is evidence
-    // rather than a guess. Omitted keys stay absent - exactOptionalPropertyTypes
-    // is off, but a spread keeps the shape honest either way.
-    ...(mfaSubjectContains === undefined ? {} : { subjectContains: mfaSubjectContains }),
-  };
-
   /**
-   * Whether the code comes from a stdin prompt, a seeded Gmail profile or the
-   * Gmail API is environment configuration (mfa.provider), never a decision
-   * made here - which is what lets the same automation run attended in dev and
-   * unattended in production.
+   * Whether the code comes from a stdin prompt, an IMAP mailbox, a seeded Gmail
+   * profile or the Gmail API is environment configuration (mfa.provider), never
+   * a decision made here - which is what lets the same automation run attended
+   * in dev and unattended in production.
    *
    * Hoisted so this function owns its lifetime. See the finally below.
    */
@@ -52,26 +27,12 @@ export async function initialize(ctx: WebInitContext<AutomationConfig>): Promise
     abortSignal: ctx.stop.abortSignal,
   });
 
-  const session: CarrierPortalSession = createCarrierPortalSession({
-    carrier: 'anthem-ca',
-    loginUrl: portalUrl,
-    usernameEnv,
-    passwordEnv,
+  const session = createAnthemSession({
+    config: ctx.config.automation,
     secrets: ctx.secrets,
-    /**
-     * Whether that is a stdin prompt, a seeded Gmail profile or the Gmail API
-     * is environment configuration (mfa.provider), never a decision made
-     * here - which is what lets the same automation run attended in dev and
-     * unattended in production.
-     */
     mfa,
-    mfaMatcher: matcher,
-    mfaTimeoutMs,
-    ...(mfaResendAfterMs === undefined ? {} : { mfaResendAfterMs }),
-    ...(mfaMaxResends === undefined ? {} : { mfaMaxResends }),
-    storageStatePath: path.join(ctx.paths.dataDir, 'sessions', 'anthem-ca.json'),
-    login: new AnthemLoginPage(ctx.config.automation),
     logger: ctx.logger,
+    dataDir: ctx.paths.dataDir,
   });
 
   let outcome;
@@ -94,7 +55,11 @@ export async function initialize(ctx: WebInitContext<AutomationConfig>): Promise
 
   // Whether MFA was consumed is worth knowing: it is the rate-limited resource.
   ctx.logger.info(
-    { portalUrl, signedInVia: outcome.how, hadStoredSession: outcome.hadStoredSession },
+    {
+      portalUrl: ctx.config.automation.portalUrl,
+      signedInVia: outcome.how,
+      hadStoredSession: outcome.hadStoredSession,
+    },
     'Signed in to the Anthem CA producer portal',
   );
 

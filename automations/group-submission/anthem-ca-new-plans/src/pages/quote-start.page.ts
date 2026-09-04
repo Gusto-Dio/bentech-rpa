@@ -1,5 +1,6 @@
-import { SystemException, step, visible, type StepContext } from '@rpa/core';
+import { BusinessException, SystemException, step, visible, type StepContext } from '@rpa/core';
 import type { Locator, Page } from 'playwright';
+import { OKTA_HOST, OKTA_PASSCODE_FIELD } from './login.page.ts';
 import { readPortalValidationError } from './portal-errors.ts';
 
 /**
@@ -30,9 +31,6 @@ const DASHBOARD_TIMEOUT_MS = 45_000;
 /** A screen transition on this portal is a client-side render, not a page load. */
 const SCREEN_TIMEOUT_MS = 20_000;
 
-/** Okta, where the SAML hand-off lands when the community session has lapsed. */
-const OKTA_HOST = 'login.broker.anthem.com';
-
 /**
  * The host of a URL, or '' when it cannot be parsed.
  *
@@ -62,6 +60,55 @@ export class QuoteStartPage {
     this.#page = page;
     this.#steps = steps;
     this.#resolveSaml = resolveSaml;
+  }
+
+  /**
+   * Which of the two real outcomes the hand-off reached.
+   *
+   * Both branches reject on timeout and map to the same value, so whichever
+   * settles FIRST decides - that is the point. The happy path resolves as soon
+   * as the browser leaves Okta, without waiting out the challenge budget.
+   */
+  async #awaitHandOff(platform: Page): Promise<'platform' | 'challenged' | 'stuck'> {
+    if (!hostOf(platform.url()).endsWith(OKTA_HOST)) return 'platform';
+
+    return Promise.race([
+      platform
+        .waitForURL((url) => !url.host.endsWith(OKTA_HOST), { timeout: SCREEN_TIMEOUT_MS })
+        .then(() => 'platform' as const)
+        .catch(() => 'stuck' as const),
+      platform
+        .locator(OKTA_PASSCODE_FIELD)
+        .first()
+        .waitFor({ state: 'visible', timeout: SCREEN_TIMEOUT_MS })
+        .then(() => 'challenged' as const)
+        .catch(() => 'stuck' as const),
+    ]);
+  }
+
+  /**
+   * ── BUSINESS, NOT SYSTEM, AND DELIBERATELY ──────────────────────────────────
+   * By the time this is thrown, `Create Quote` has already succeeded: a REAL
+   * quote exists on Anthem production. A SystemException is retryable, and the
+   * runner's recovery re-runs the whole transaction from the start - which
+   * re-clicks `Create Quote` and creates a SECOND real quote for the same
+   * group, then hits Anthem's "Application Matching Error" and fails anyway.
+   *
+   * That is precisely the pathology that made this PoC's production cleanup
+   * list as long as it is. Retrying here cannot help and provably makes things
+   * worse, so the item fails terminally and a human picks it up - which is what
+   * rule 1's test actually asks: would running this again plausibly give a
+   * different answer? No.
+   * ───────────────────────────────────────────────────────────────────────────
+   */
+  #handOffFailed(because: string): BusinessException {
+    return new BusinessException(
+      `Create Quote opened the platform tab but the hand-off did not complete: ${because}. ` +
+        'The portal session is valid; the Salesforce community session had lapsed. A quote has ' +
+        'ALREADY been created for this group, so this is not retried - a retry would create a ' +
+        'second one. Re-run once the session is re-established, and clear the orphan quote.',
+      { details: { reason: because } },
+    );
   }
 
   /**
@@ -178,45 +225,29 @@ export class QuoteStartPage {
     }
 
     /**
-     * ── THE SAML HOP CAN ASK FOR THE PASSWORD AGAIN ─────────────────────────
-     * `Create Quote` hands off to the Salesforce platform through Okta SAML,
-     * and that hop can land on `login.broker.anthem.com/app/.../sso/saml` with
-     * a Password field instead of the platform - observed 2026-09-04 in a
-     * container whose portal session was otherwise fine (`signedInVia:
-     * "reused"`).
+     * ── THE SAML HOP: PLATFORM, OR A PASSWORD PROMPT? ──────────────────────
+     * `Create Quote` hands off to the Salesforce platform through Okta, and the
+     * happy path GOES THROUGH Okta: an auto-posting intermediate document
+     * bounces the browser on to the platform. So "the URL is on Okta right now"
+     * proves nothing - checking it immediately after `domcontentloaded` would
+     * fire on a perfectly good hand-off, and the recovery below would then
+     * throw on a run that was fine.
      *
-     * Without this check the tab is returned anyway and the failure surfaces
-     * three lines later as "not in the expected state for: answer: is the group
-     * currently covered by Anthem" - which reads like a broken locator on a
-     * screen that was never reached. Naming the actual cause is the whole
-     * value here.
-     *
-     * SYSTEM, not Business: the session needs re-authenticating, and the
-     * runner's recovery does exactly that - relaunch the browser, re-run
-     * `initialize()`, sign in again. A retry can plausibly succeed, which is
-     * the test for System.
-     *
-     * Not yet reproducible on demand - see open-questions.md. The container is
-     * NOT the variable: it reaches the platform cleanly by the launchpad route.
-     * ────────────────────────────────────────────────────────────────────────
+     * What distinguishes the two is a VISIBLE PASSWORD FIELD. So this races the
+     * two real outcomes and lets whichever happens first decide: leaving Okta
+     * means the hand-off completed, a passcode field appearing means the
+     * community session had lapsed and we are being challenged.
+     * ───────────────────────────────────────────────────────────────────────
      */
-    if (hostOf(result.value.url()).endsWith(OKTA_HOST)) {
+    const platform = result.value;
+    const hop = await this.#awaitHandOff(platform);
+
+    if (hop === 'challenged') {
       /**
-       * Recover rather than fail. The password is all Okta wants for this hop -
-       * the device is already trusted, so no MFA code is spent - and answering
-       * it is far cheaper than a SystemException that relaunches the browser,
-       * re-runs initialize() and retries the whole transaction, creating a
-       * second real quote for the same group in the process.
+       * Recover rather than fail: the password is all Okta wants for this hop -
+       * the device is already trusted, so no MFA code is spent.
        */
-      /**
-       * `?? false` covers "no resolver injected"; the `.catch` covers a
-       * resolver that rejects. `??` does not catch a rejection, and without the
-       * catch a failed re-authentication surfaced as a raw Playwright
-       * TimeoutError instead of the message below. `resolveSamlChallenge` now
-       * returns false itself, so this is defence in depth rather than the fix.
-       */
-      const recovered =
-        (await this.#resolveSaml?.(result.value).catch(() => false)) ?? false;
+      const recovered = (await this.#resolveSaml?.(platform).catch(() => false)) ?? false;
       this.#steps.logger.warn(
         { recovered },
         recovered
@@ -224,14 +255,9 @@ export class QuoteStartPage {
           : 'The platform hand-off asked for the password again and could not be recovered',
       );
 
-      if (!recovered || hostOf(result.value.url()).endsWith(OKTA_HOST)) {
-        throw new SystemException(
-          'Create Quote handed off to Okta and was asked to authenticate again, instead of ' +
-            'opening the quoting platform. The portal session is valid but the community session ' +
-            'had lapsed, and re-authenticating it did not succeed.',
-          { details: { landedOn: hostOf(result.value.url()) } },
-        );
-      }
+      if (!recovered) throw this.#handOffFailed('the password prompt could not be answered');
+    } else if (hop === 'stuck') {
+      throw this.#handOffFailed('it stayed on Okta without ever showing a password prompt');
     }
 
     return result.value;

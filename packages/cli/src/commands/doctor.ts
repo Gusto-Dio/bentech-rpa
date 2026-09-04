@@ -158,7 +158,17 @@ export function checkHeadless(): Check {
     return { name: 'headless', level: 'pass', detail: `HEADLESS=false with DISPLAY=${display}` };
   }
 
-  const hasXvfb = ['/usr/bin/xvfb-run', '/bin/xvfb-run'].some((candidate) => existsSync(candidate));
+  /**
+   * A PATH lookup, because that is how the thing which actually starts the
+   * display finds it: `with-display.sh` uses `command -v xvfb-run`. Two
+   * hardcoded paths answered the same question differently, so on a runtime
+   * with xvfb-run somewhere else on PATH doctor said `fail` ("Chromium cannot
+   * start") about a machine that starts it fine.
+   */
+  const hasXvfb = (process.env['PATH'] ?? '')
+    .split(path.delimiter)
+    .filter((dir) => dir !== '')
+    .some((dir) => existsSync(path.join(dir, 'xvfb-run')));
   if (hasXvfb) {
     return {
       name: 'headless',

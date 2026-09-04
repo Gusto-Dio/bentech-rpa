@@ -69,24 +69,47 @@ describe('the Create Quote SAML guard', () => {
   const source = readFileSync(path.join(import.meta.dirname, 'quote-start.page.ts'), 'utf8');
   const body = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
 
-  it('parses the URL rather than matching the whole string', () => {
-    assert.match(body, /new URL\(url\)\.host/);
+  /**
+   * The happy path GOES THROUGH Okta: an auto-posting intermediate document
+   * bounces the browser on to the platform. So the host alone proves nothing,
+   * and deciding on it right after `domcontentloaded` would fail runs that were
+   * fine. A visible passcode field is what distinguishes a challenge.
+   */
+  it('requires a visible passcode field, not merely an Okta URL', () => {
+    assert.match(body, /OKTA_PASSCODE_FIELD/);
+    assert.match(body, /state:\s*'visible'/);
+  });
+
+  it('races leaving Okta against being challenged, so neither has to time out', () => {
+    assert.match(body, /Promise\.race/);
+  });
+
+  it('shares the Okta host with login.page.ts rather than duplicating the literal', () => {
+    assert.doesNotMatch(body, /'login\.broker\.anthem\.com'/);
+    assert.match(body, /OKTA_HOST/);
+  });
+
+  it('attempts recovery before giving up', () => {
+    assert.match(body, /resolveSaml\?\.\(/);
   });
 
   /**
-   * It tries to RECOVER before failing. A SystemException here relaunches the
-   * browser, re-runs initialize() and retries the whole transaction - which
-   * creates a second real quote for the same group. Answering the password is
-   * cheaper by every measure, and costs no MFA code.
+   * BUSINESS, and this reverses an earlier version of this test.
+   *
+   * By the time the guard fails, `Create Quote` has already created a REAL
+   * quote. A SystemException is retryable, and the runner's recovery re-runs
+   * the whole transaction - re-clicking `Create Quote` and creating a SECOND
+   * quote for the same group, which then hits Anthem's "Application Matching
+   * Error" and fails anyway. That is the pathology behind this PoC's production
+   * cleanup list, so the item fails terminally instead.
    */
-  it('attempts recovery before throwing', () => {
-    const guard = body.slice(body.indexOf('OKTA_HOST)'));
-    assert.match(guard.slice(0, 900), /resolveSaml/);
+  it('fails an unrecovered hand-off as Business, because a retry would duplicate the quote', () => {
+    const guard = body.slice(body.indexOf('#handOffFailed(because'));
+    assert.match(guard.slice(0, 700), /BusinessException/);
+    assert.doesNotMatch(guard.slice(0, 700), /SystemException/);
   });
 
-  it('still classifies an unrecovered re-challenge as System, not Business', () => {
-    const guard = body.slice(body.indexOf('OKTA_HOST)'));
-    assert.match(guard.slice(0, 900), /SystemException/);
-    assert.doesNotMatch(guard.slice(0, 900), /BusinessException/);
+  it('says in the message that a quote already exists', () => {
+    assert.match(source, /ALREADY been created/);
   });
 });

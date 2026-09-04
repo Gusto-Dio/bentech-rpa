@@ -1,6 +1,5 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { createCarrierPortalSession } from '../../automations/group-submission/_shared/src/index.ts';
 import {
   SecretResolver,
   chromiumLaunchOptions,
@@ -12,6 +11,7 @@ import {
 import { chromium, type Page } from 'playwright';
 import { automationConfigSchema } from '../../automations/group-submission/anthem-ca-new-plans/src/config.ts';
 import { AnthemLoginPage } from '../../automations/group-submission/anthem-ca-new-plans/src/pages/login.page.ts';
+import { createAnthemSession } from '../../automations/group-submission/anthem-ca-new-plans/src/session.ts';
 
 /**
  * Signs in to Anthem and proves we can reach the quoting platform. Creates nothing.
@@ -79,29 +79,18 @@ async function main(): Promise<void> {
     repoRoot,
   });
 
-  const session = createCarrierPortalSession({
-    carrier: 'anthem-ca',
-    loginUrl: auto.portalUrl,
-    usernameEnv: auto.usernameEnv,
-    passwordEnv: auto.passwordEnv,
+  /**
+   * The SAME builder `initialize.ts` uses. A diagnostic that reconstructs the
+   * sign-in it is meant to verify proves less the moment the two drift.
+   */
+  const session = createAnthemSession({
+    config: auto,
     secrets,
     mfa,
-    mfaMatcher: {
-      label: auto.mfaLabel,
-      fromAllowList: auto.mfaSenderAllowList,
-      codePattern: /\b(\d{6})\b/,
-      ...(auto.mfaSubjectContains === undefined ? {} : { subjectContains: auto.mfaSubjectContains }),
-    },
-    mfaTimeoutMs: auto.mfaTimeoutMs,
-    ...(auto.mfaResendAfterMs === undefined ? {} : { mfaResendAfterMs: auto.mfaResendAfterMs }),
-    ...(auto.mfaMaxResends === undefined ? {} : { mfaMaxResends: auto.mfaMaxResends }),
-    storageStatePath: path.resolve(repoRoot, config.dataDir, 'sessions', 'anthem-ca.json'),
-    login: new AnthemLoginPage(auto),
     logger,
+    dataDir: path.resolve(repoRoot, config.dataDir),
   });
 
-  // One definition of config -> launch options, shared with BrowserSession, so
-  // this really does launch the browser a run launches.
   const browser = await chromium.launch(chromiumLaunchOptions(config.browser));
 
   try {
