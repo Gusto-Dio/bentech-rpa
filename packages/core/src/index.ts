@@ -67,6 +67,8 @@ export {
   type ImapCredentials,
   type ImapFetchedMessage,
   type ImapMfaProviderOptions,
+  type ImapRange,
+  type ImapSearchObject,
   type ImapSession,
 } from './mfa/ImapMfaProvider.ts';
 export {

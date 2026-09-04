@@ -47,17 +47,34 @@ import { extractTextFromRfc822 } from './mimeText.ts';
 export interface ImapSession {
   connect(): Promise<void>;
   /** UIDs matching the query, ascending. Cheap: no bodies are transferred. */
-  search(query: { since?: Date }, options?: { uid?: boolean }): Promise<number[] | false>;
+  search(query: ImapSearchObject, options?: { uid?: boolean }): Promise<number[] | false>;
   /** Throws when the mailbox does not exist - which is how a mistyped label fails loudly. */
   mailboxOpen(path: string, options?: { readOnly?: boolean }): Promise<unknown>;
   fetch(
-    range: unknown,
+    range: ImapRange,
     query: { envelope?: boolean; internalDate?: boolean; source?: boolean; uid?: boolean },
     options?: { uid?: boolean },
   ): AsyncIterable<ImapFetchedMessage>;
-  messageFlagsAdd(range: unknown, flags: readonly string[], options?: { uid?: boolean }): Promise<boolean>;
+  messageFlagsAdd(range: ImapRange, flags: readonly string[], options?: { uid?: boolean }): Promise<boolean>;
   logout(): Promise<void>;
 }
+
+/**
+ * imapflow's SearchObject, narrowed to the two criteria this provider uses.
+ *
+ * `uid` is a sequence STRING (`'1,2,3'` or `'1:10'`), not an array - that is
+ * imapflow's shape, and it is the detail that matters here: a wrong range does
+ * not throw, it silently yields nothing. Typed rather than left as `unknown` so
+ * the compiler carries some of that weight instead of all of it resting on a
+ * comment and a live check.
+ */
+export interface ImapSearchObject {
+  since?: Date;
+  uid?: string;
+}
+
+/** A sequence string, or a SearchObject. Both are valid imapflow ranges. */
+export type ImapRange = string | ImapSearchObject;
 
 export interface ImapFetchedMessage {
   uid?: number;

@@ -178,7 +178,14 @@ export const imapConfigSchema = z
      * admin can disable app passwords entirely.
      */
     passwordEnv: z.string().min(1).optional(),
-    /** An OAuth2 access token, for XOAUTH2. Mutually exclusive with passwordEnv. */
+    /**
+     * An OAuth2 access token, for XOAUTH2.
+     *
+     * Takes PRECEDENCE over `passwordEnv` when both are set - and both being
+     * set is the normal case for OAuth, not an error, because the code default
+     * always supplies `passwordEnv` and the loader cannot remove it. See the
+     * superRefine below.
+     */
     accessTokenEnv: z.string().min(1).optional(),
   })
   .superRefine((config, ctx) => {
