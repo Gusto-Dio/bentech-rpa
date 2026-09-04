@@ -65,6 +65,9 @@ pnpm verify:templates                      # scaffold every template, typecheck,
 # relaunching per command costs ~60s and loses the portal's place.
 pnpm tsx tooling/scripts/anthem-serve.ts &        # once; holds a signed-in browser
 pnpm tsx tooling/scripts/anthem-do.ts "c Start Quote"   # attach, act, dump, detach
+# Permitted under the production freeze (rule 10a) - both create nothing:
+pnpm tsx tooling/scripts/check-portal-access.ts        # can we load the login page
+pnpm tsx tooling/scripts/check-portal-navigation.ts    # sign in and reach the quoting platform
 pnpm tsx tooling/scripts/anthem-verify-checklist.ts "<group>" "<quote>"  # read-only: checks the
                                                   # Document Checklist locators on the live screen
 pkill -f anthem-serve                             # release it (orphans hold the profile)
@@ -206,6 +209,37 @@ Both carrier automations run against **production** portals with no sandbox.
 Signing (Anthem) and attestation (UHC) are irreversible. `allowSubmit` defaults
 to `false` and every method fronting a submit control must check it and throw a
 `BusinessException` naming the guard. Do not flip it to verify something — ask.
+
+### 10a. ⛔ ANTHEM PRODUCTION IS FROZEN (from 2026-09-04)
+
+**Until the Benefits team confirms the existing records are cleared, the only
+things permitted against Anthem production are SIGNING IN and NAVIGATING.**
+
+Nothing that creates or changes a record: no quote, no account, no application,
+no signature — regardless of `allowSubmit`. Note that `allowSubmit: false` is
+**not** sufficient to satisfy this: a run at that setting still creates a real
+account and a real quote before it parks on Attestation.
+
+Mapping the PoC left seven signed applications, at least five orphan quotes and
+duplicate accounts on production — see
+[production-cleanup.md](docs/poc/anthem-ca-new-plans/production-cleanup.md). The
+freeze holds until that is cleaned up and the risk is understood.
+
+What is still allowed, and enough for most work:
+
+```bash
+# Login and navigation only. Creates nothing.
+pnpm tsx tooling/scripts/check-portal-access.ts
+pnpm tsx tooling/scripts/check-portal-navigation.ts
+
+# Read-only reconnaissance against records that already exist
+pnpm tsx tooling/scripts/anthem-serve.ts &
+pnpm tsx tooling/scripts/anthem-do.ts "<command>"
+```
+
+`pnpm rpa run group-submission/anthem-ca-new-plans` is **not** allowed under the
+freeze, at any `allowSubmit` setting. Lift it only on the owner's explicit
+instruction, and say in the drift log when and why.
 
 ### 10b. Reading MFA mail: what is a security control and what is bookkeeping
 

@@ -80,6 +80,19 @@ answer into the relevant doc.
       would be easier if there were
 - [ ] Who is allowed to flip `allowSubmit`, and under what circumstances?
 
+- [ ] **Does `Create Quote` need to tolerate a SAML re-challenge?** A container
+      run reusing a host session hit an Okta password prompt on that hop
+      (`login.broker.anthem.com/app/.../sso/saml`) instead of Group Setup, while
+      the host passed the same step. The container is NOT the variable — it
+      reaches the platform fine via the `Small Group Quote & Enroll` launchpad
+      tile. Most likely the community/SAML session was not yet established on
+      that route. Confirming it means driving `Create Quote`, which writes, so it
+      is blocked by the production freeze
+- [ ] **Is a full unattended container run viable?** Login and navigation are
+      proven in the container; everything past `Create Quote` is not, for the
+      same reason. Headed under xvfb also costs more CPU and memory than
+      headless, and has not been load tested with concurrent runs
+
 ## Decisions deferred to phase 2
 
 - [ ] Orchestrator queue name and folder (the integration is built; see

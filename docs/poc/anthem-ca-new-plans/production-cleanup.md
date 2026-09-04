@@ -14,6 +14,23 @@ by the writing agent and paid agency named in the Benefits runbook.
 
 ---
 
+## ⛔ Production is frozen until this is cleared
+
+**Only signing in and navigating are permitted against Anthem production.**
+Nothing that creates or changes a record — no quote, no account, no application,
+no signature.
+
+`allowSubmit: false` does **not** satisfy this. A run at that setting still
+creates a real account and a real quote before it parks on Attestation, which is
+exactly what produced most of the list below.
+
+So `pnpm rpa run group-submission/anthem-ca-new-plans` is off limits for now, at
+any setting. Use the login/navigation checks instead — see rule 10a in
+[`AGENTS.md`](../../../AGENTS.md). The freeze lifts when the Benefits team has
+confirmed these records are cleared and told us what the exposure was.
+
+---
+
 ## The reliable way to find everything
 
 **Search Accounts, Quotes and Applications for `The Company LLC`.**

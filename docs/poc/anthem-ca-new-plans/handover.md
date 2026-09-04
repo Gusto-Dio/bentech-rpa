@@ -164,6 +164,24 @@ processed: 1   success: 1   business: 0   system: 0   retries: 0
 
 ## Warnings
 
+### ⛔ Production is frozen — login and navigation only (from 2026-09-04)
+
+Mapping this PoC left seven signed applications, orphan quotes and duplicate
+accounts on Anthem production. Until the Benefits team confirms those are
+cleared, **do not run the automation against production at all** — not even with
+`allowSubmit: false`, because that still creates a real account and a real quote
+before it stops.
+
+Permitted, and enough to verify a machine works:
+
+```bash
+pnpm tsx tooling/scripts/check-portal-access.ts       # can we load the login page
+pnpm tsx tooling/scripts/check-portal-navigation.ts   # can we sign in and navigate
+```
+
+See [production-cleanup.md](production-cleanup.md) and rule 10a in
+[`AGENTS.md`](../../../AGENTS.md). Everything below applies once the freeze lifts.
+
 ### ⚠ `allowSubmit: true` signs and files a real application
 
 There is no sandbox. `true` means the automation **locks, signs and files a real

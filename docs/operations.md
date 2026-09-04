@@ -244,6 +244,12 @@ browser, and it is worth saying so before a run finds out.
 
 ### Still open
 
+- **Anything past `Create Quote` is unproven in a container.** Sign-in and
+  reaching the quoting platform are proven — `check-portal-navigation.ts` does
+  both and creates nothing. One container run reusing a host-created session hit
+  an Okta SAML password challenge on the `Create Quote` hop; the container is not
+  the variable (it does the SAML hand-off fine via the launchpad tile), so the
+  route is. Confirming needs a write, which the production freeze forbids.
 - **Architecture.** Build explicitly for the servers with
   `docker buildx build --platform linux/amd64`, which cross-builds slowly on
   Apple Silicon. That is the price of not shipping an arm64 image to an x86_64
