@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { findRepoRoot, loadConfig } from '@rpa/core';
+import { chromiumLaunchOptions, findRepoRoot, loadConfig } from '@rpa/core';
 import { chromium } from 'playwright';
 
 /**
@@ -61,19 +61,17 @@ async function main(): Promise<void> {
     return;
   }
 
-  const { headless, noSandbox, args } = config.browser;
 
   console.log('check-portal-access');
   console.log(`  url      : ${url}`);
-  console.log(`  headless : ${headless}`);
+  console.log(`  headless : ${config.browser.headless}`);
   console.log(`  display  : ${process.env['DISPLAY'] ?? '(none)'}`);
   console.log(`  platform : ${process.platform}/${process.arch}`);
   console.log();
 
-  const browser = await chromium.launch({
-    headless,
-    args: [...(noSandbox ? ['--no-sandbox'] : []), ...args],
-  });
+  // One definition of config -> launch options, shared with BrowserSession, so
+  // this really does launch the browser a run launches.
+  const browser = await chromium.launch(chromiumLaunchOptions(config.browser));
 
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -97,7 +95,7 @@ async function main(): Promise<void> {
       console.log(`  first 200 chars: ${text.slice(0, 200)}`);
       console.log();
       console.log(
-        headless
+        config.browser.headless
           ? '  Anthem blocks headless Chromium. Re-run with HEADLESS=false; in a container the\n' +
               '  entrypoint supplies a virtual display via xvfb.'
           : '  Headed and still refused. This is NOT the known headless block - capture the page\n' +

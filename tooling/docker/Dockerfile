@@ -70,8 +70,9 @@ ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
 # normally headed - bot protection, not a bug. So the one automation that has to
 # run unattended is also the one that cannot run headless, and a container has
 # no display. xvfb gives it a virtual one, which is what makes the Ubuntu
-# runtime possible at all. See entrypoint.sh, which starts it only when a run
-# actually asks for a headed browser.
+# runtime possible at all. See tooling/docker/with-display.sh, which starts it
+# only when a run actually asks for a headed browser - entrypoint.sh just
+# delegates to that wrapper, so overriding the entrypoint keeps the display.
 #
 # libnss3-tools is for the certutil call below.
 RUN apt-get update \

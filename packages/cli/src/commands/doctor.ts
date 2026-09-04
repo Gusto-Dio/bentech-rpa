@@ -134,7 +134,7 @@ function checkEnvFile(repoRoot: string): Check {
  * headless server", which was true and unhelpful: it named the symptom and not
  * the fix, on the one setting a carrier forces.
  */
-function checkHeadless(): Check {
+export function checkHeadless(): Check {
   const headless = process.env['HEADLESS'];
 
   if (headless === undefined || headless === '') {

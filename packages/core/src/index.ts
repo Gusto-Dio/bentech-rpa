@@ -153,7 +153,11 @@ export {
   type Session,
   type SessionKind,
 } from './contracts/Session.ts';
-export { BrowserSession, type BrowserSessionOptions } from './session/BrowserSession.ts';
+export {
+  BrowserSession,
+  chromiumLaunchOptions,
+  type BrowserSessionOptions,
+} from './session/BrowserSession.ts';
 export { NoopSession } from './session/NoopSession.ts';
 
 // ── Secrets (vault seam) ─────────────────────────────────────────────────────

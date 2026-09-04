@@ -79,6 +79,9 @@ function signedInLandmark(page: Page): ReturnType<Page['getByText']> {
   return page.getByText('Book of Business').first();
 }
 
+/** Okta, which fronts both the initial password screen and the SAML hand-off. */
+const OKTA_HOST = 'login.broker.anthem.com';
+
 export class AnthemLoginPage implements CarrierLoginFlow {
   readonly #config: AutomationConfig;
 
@@ -169,12 +172,25 @@ export class AnthemLoginPage implements CarrierLoginFlow {
      * Wait to leave Okta entirely rather than for a specific destination: the
      * hop can land on the community home or deep in the wizard depending on
      * where it was interrupted, and both are success.
+     *
+     * ── FALSE, NOT A THROW ────────────────────────────────────────────────────
+     * This returns a boolean, so it has to return one on every path. It used to
+     * let the timeout propagate, and that made the caller's own error message
+     * unreachable: `(await resolveSaml?.(page)) ?? false` does not catch a
+     * REJECTION, so a wrong password or an unexpected factor screen surfaced as
+     * a raw Playwright `TimeoutError` naming a URL predicate - the least
+     * informative possible description of "Okta would not let us back in".
+     *
+     * A caller that gets `false` explains the situation properly. That is the
+     * whole reason this reports rather than throws.
+     * ─────────────────────────────────────────────────────────────────────────
      */
-    await page.waitForURL((url) => !url.host.endsWith('login.broker.anthem.com'), {
-      timeout: timeoutMs,
-    });
+    const left = await page
+      .waitForURL((url) => !url.host.endsWith(OKTA_HOST), { timeout: timeoutMs })
+      .then(() => true)
+      .catch(() => false);
 
-    return true;
+    return left;
   }
 
   /**

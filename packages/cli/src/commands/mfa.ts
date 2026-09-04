@@ -220,8 +220,8 @@ async function checkOverImap(config: MfaConfig, label: string, days: number): Pr
     errorLine(style.red(cause instanceof Error ? cause.message : String(cause)));
     return 1;
   } finally {
-    // Optional on the interface, and idempotent where implemented.
-    await provider.close?.();
+    // ImapMfaProvider.close() is a required method, so no optional call here.
+    await provider.close();
   }
 }
 

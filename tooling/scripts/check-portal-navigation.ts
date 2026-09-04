@@ -1,7 +1,14 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { createCarrierPortalSession } from '../../automations/group-submission/_shared/src/index.ts';
-import { SecretResolver, createLogger, createMfaProvider, findRepoRoot, loadConfig } from '@rpa/core';
+import {
+  SecretResolver,
+  chromiumLaunchOptions,
+  createLogger,
+  createMfaProvider,
+  findRepoRoot,
+  loadConfig,
+} from '@rpa/core';
 import { chromium, type Page } from 'playwright';
 import { automationConfigSchema } from '../../automations/group-submission/anthem-ca-new-plans/src/config.ts';
 import { AnthemLoginPage } from '../../automations/group-submission/anthem-ca-new-plans/src/pages/login.page.ts';
@@ -93,10 +100,9 @@ async function main(): Promise<void> {
     logger,
   });
 
-  const browser = await chromium.launch({
-    headless: config.browser.headless,
-    args: [...(config.browser.noSandbox ? ['--no-sandbox'] : []), ...config.browser.args],
-  });
+  // One definition of config -> launch options, shared with BrowserSession, so
+  // this really does launch the browser a run launches.
+  const browser = await chromium.launch(chromiumLaunchOptions(config.browser));
 
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
@@ -162,11 +168,14 @@ async function main(): Promise<void> {
       console.log(`  url: ${url.slice(0, 160)}`);
       console.log();
       console.log(
-        '  The portal session works but the platform hand-off does not. Seen when a\n' +
-          '  container reuses a session created by a DIFFERENT browser: Okta appears to\n' +
-          '  bind its device token to the browser that authenticated. A session this\n' +
-          '  runtime created itself should not hit this - delete the session file and\n' +
-          '  re-run to find out.',
+        '  The community session had lapsed and re-authenticating it did not work, so\n' +
+          '  this is NOT the ordinary lapse that resolveSamlChallenge handles - it was\n' +
+          '  already tried a few lines above. Likely causes: a wrong ANTHEM_PORTAL_PASSWORD,\n' +
+          '  or Okta showing an unexpected factor screen for this hop.\n' +
+          '\n' +
+          '  It is NOT a container-vs-host or device-token problem. That theory was tested\n' +
+          '  and retracted - see the 2026-09-04 entries in the Anthem drift log. Only\n' +
+          '  elapsed time decides whether the hop is challenged.',
       );
       process.exitCode = 1;
       return;

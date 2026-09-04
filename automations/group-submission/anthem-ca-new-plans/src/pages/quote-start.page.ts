@@ -208,7 +208,15 @@ export class QuoteStartPage {
        * re-runs initialize() and retries the whole transaction, creating a
        * second real quote for the same group in the process.
        */
-      const recovered = (await this.#resolveSaml?.(result.value)) ?? false;
+      /**
+       * `?? false` covers "no resolver injected"; the `.catch` covers a
+       * resolver that rejects. `??` does not catch a rejection, and without the
+       * catch a failed re-authentication surfaced as a raw Playwright
+       * TimeoutError instead of the message below. `resolveSamlChallenge` now
+       * returns false itself, so this is defence in depth rather than the fix.
+       */
+      const recovered =
+        (await this.#resolveSaml?.(result.value).catch(() => false)) ?? false;
       this.#steps.logger.warn(
         { recovered },
         recovered
