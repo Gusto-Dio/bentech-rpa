@@ -156,6 +156,50 @@ export const gmailApiConfigSchema = z.strictObject({
 export type GmailApiConfig = z.infer<typeof gmailApiConfigSchema>;
 
 /**
+ * IMAP settings for the `imap` provider.
+ *
+ * An INTERIM option, added to unblock the PoCs. The trade-off is real and
+ * written up in docs/poc/mfa-gmail.md: an IMAP credential is long-lived and can
+ * select any folder, so its blast radius is the whole mailbox rather than one
+ * label. `gmail-api` remains the production target.
+ */
+export const imapConfigSchema = z
+  .strictObject({
+    host: z.string().min(1),
+    port: z.number().int().min(1).max(65_535),
+    /** Implicit TLS. 993 is `true`; 143 with STARTTLS is `false`. */
+    secure: z.boolean(),
+
+    /** NAMES of the credential env vars, never the values. */
+    userEnv: z.string().min(1),
+    /**
+     * An APP password, not a mailbox password - Google stopped accepting those
+     * for IMAP. Requires 2-Step Verification on the account, and a Workspace
+     * admin can disable app passwords entirely.
+     */
+    passwordEnv: z.string().min(1).optional(),
+    /** An OAuth2 access token, for XOAUTH2. Mutually exclusive with passwordEnv. */
+    accessTokenEnv: z.string().min(1).optional(),
+  })
+  .superRefine((config, ctx) => {
+    /**
+     * Exactly one credential, checked at startup rather than at the first login.
+     * Both set is ambiguous about which one authenticates; neither set fails
+     * three screens into a run, on a machine nobody is watching.
+     */
+    const supplied = [config.passwordEnv, config.accessTokenEnv].filter((value) => value !== undefined);
+    if (supplied.length !== 1) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['passwordEnv'],
+        message:
+          'set exactly one of passwordEnv (an app password) or accessTokenEnv (OAuth2 XOAUTH2)',
+      });
+    }
+  });
+export type ImapConfig = z.infer<typeof imapConfigSchema>;
+
+/**
  * How an automation obtains an MFA code.
  *
  * This is the seam the two carrier PoCs were designed around: the provider is
@@ -178,8 +222,13 @@ export const mfaConfigSchema = z.strictObject({
    *   gmail-api     - Gmail REST API with a refresh token. The production
    *                   target: headless-safe and the only one that does not
    *                   depend on Gmail's markup.
+   *   imap          - IMAP against the mailbox's own label. Headless-safe and
+   *                   markup-free like gmail-api, and far quicker to stand up,
+   *                   but the credential reaches the WHOLE mailbox rather than
+   *                   one label. An interim unblock for the PoCs, not the
+   *                   destination - see docs/poc/mfa-gmail.md.
    */
-  provider: z.enum(['manual', 'gmail-cdp', 'gmail-profile', 'gmail-api']),
+  provider: z.enum(['manual', 'gmail-cdp', 'gmail-profile', 'gmail-api', 'imap']),
 
   /**
    * Where `gmail-cdp` looks for Chrome's DevTools endpoint.
@@ -202,6 +251,7 @@ export const mfaConfigSchema = z.strictObject({
   pollIntervalMs: z.number().int().min(1_000),
 
   gmail: gmailApiConfigSchema,
+  imap: imapConfigSchema,
 });
 export type MfaConfig = z.infer<typeof mfaConfigSchema>;
 
@@ -347,6 +397,13 @@ export const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
       requestTimeoutMs: 30_000,
       maxRetries: 3,
       tokenRefreshSkewMs: 60_000,
+    },
+    imap: {
+      host: 'imap.gmail.com',
+      port: 993,
+      secure: true,
+      userEnv: 'MFA_IMAP_USER',
+      passwordEnv: 'MFA_IMAP_APP_PASSWORD',
     },
   },
 

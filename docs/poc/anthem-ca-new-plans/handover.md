@@ -36,17 +36,51 @@ rather than a shortcut worth taking.
 
 ## 3. MFA
 
-Anthem emails a one-time code. The automation reads it out of a Gmail label, so
-you need that mailbox reachable:
+Anthem emails a one-time code. The automation reads it out of the mailbox label
+it lands in, so you need that mailbox reachable. **`mfa.provider` decides how** —
+pick one:
+
+**`imap` — easiest, and what to use to get going.** No browser, so it works
+headless and on Linux. Put two values in `.env`:
+
+```
+MFA_IMAP_USER=
+MFA_IMAP_APP_PASSWORD=      # a Google APP password, not the mailbox password
+```
+
+Google stopped accepting plain mailbox passwords for IMAP. An app password needs
+2-Step Verification on the account, and a Workspace admin can disable app
+passwords — so if `connect` fails, that's the first thing to check.
+
+Be aware of what you are handing over: an IMAP credential can select **any**
+folder, so its reach is the whole mailbox, not just the label. The provider only
+ever opens the configured label and a test pins that, but the credential itself
+cannot be scoped. Trade-off written up in [../mfa-gmail.md](../mfa-gmail.md).
+
+**`gmail-profile`** — a persistent browser profile a human signs in to once.
+Needs a display, expires, and depends on Gmail's markup:
 
 ```bash
-pnpm rpa mfa seed-profile --account <email>     # one-time human sign-in, needs a display
+pnpm rpa mfa seed-profile --account <email>     # one-time human sign-in
+```
+
+**`gmail-api`** — the production target. Needs a Google Cloud project and a
+refresh token, and has not been validated against a real mailbox yet.
+
+Whichever you pick:
+
+```bash
 pnpm rpa mfa check --label "Access Token (Anthem)" --days 1
 ```
 
-**Run `mfa check` before a run, not after it fails.** A session is saved to
-`data/sessions/anthem-ca.json` and reused, so most runs spend no code at all —
-look for `signedInVia: "reused"` in the log.
+**Run this before a run, not after it fails.** It reports which senders are in
+the label and how many carry a six-digit code, which is how you set
+`mfaSenderAllowList` from evidence instead of guessing.
+
+One thing worth knowing: the code is sent to `carrierops@gusto.com` and
+**forwarded** to the mailbox we read, which is why that address shows up as a
+*sender*. A session is saved to `data/sessions/anthem-ca.json` and reused, so
+most runs spend no code at all — look for `signedInVia: "reused"` in the log.
 
 ## 4. Test data
 
@@ -205,7 +239,7 @@ answer?"* Yes → System. No → Business.
 
 | Doc | What it covers |
 |---|---|
-| [`CLAUDE.md`](../../../CLAUDE.md) | The rules that matter, and a gotchas table that will save you hours |
+| [`AGENTS.md`](../../../AGENTS.md) | The rules that matter, and a gotchas table that will save you hours |
 | [`drift-log.md`](drift-log.md) | Every way the live portal differs from the runbook — ~90 entries. Read this before believing any runbook |
 | [`process-steps.md`](process-steps.md) | The real 14-step wizard, screen by screen |
 | [`documents.md`](documents.md) | The `Document Checklist` step and its 23 slots |

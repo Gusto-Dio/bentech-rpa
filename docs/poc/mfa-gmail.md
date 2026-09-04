@@ -290,7 +290,7 @@ against a real mailbox".
 |---|---|
 | Automate the Gmail **login** with Playwright | Needs the mailbox password *and* the very OTP that is unavailable |
 | Scrape the modern Gmail JS UI | Brittle by construction; fights Google's own bot detection |
-| IMAP with an app password | Works, but it is a long-lived credential with access to the entire mailbox and a much weaker audit trail. Acceptable only if a Cloud project is truly impossible |
+| IMAP with an app password | **Reversed on 2026-09-04 — see below.** The objection stands (long-lived credential, whole-mailbox reach, weaker audit trail) but the alternatives were blocking the PoCs |
 
 ## Failure modes and their classification
 
@@ -345,3 +345,95 @@ So the last mile — reading a genuinely fresh code — can only be proven by
 triggering a real carrier login. Everything before it is verified against the
 live mailbox: label search, sender extraction, date parsing, mailbox identity
 and query construction.
+
+## The `imap` provider (added 2026-09-04, interim)
+
+This page rejected IMAP, and the reasoning was sound. It is implemented anyway,
+deliberately, as an **interim unblock** — and this section exists so the
+trade-off is recorded rather than reversed quietly.
+
+### Why it was added
+
+The two providers that worked without a Cloud project both drive Gmail's own JS
+UI, and that cost this project a string of failures — all written up in
+[`anthem-ca-new-plans/drift-log.md`](anthem-ca-new-plans/drift-log.md):
+
+- a `goto()` differing only in its `#fragment` is a same-document navigation, so
+  106 polls re-read a cached list and a code that arrived in 26s went unseen;
+- row dates read `6:38 PM` with no seconds, so a code arriving in the same
+  minute it was requested was rejected as stale;
+- rows carry no stable id — the `id` attribute is reassigned on every re-render;
+- Gmail's basic HTML view, which the original design specified, was retired in
+  January 2024.
+
+They also need a display, so they cannot run on the Linux runtime at all.
+`gmail-api` remains the production answer and is still unvalidated against a
+real mailbox. IMAP is neither of those things: no browser, no markup, works
+headless, and stands up in an afternoon.
+
+### What the trade-off actually is
+
+| | `gmail-api` | `imap` |
+|---|---|---|
+| Credential reach | scoped token: `gmail.readonly` + `gmail.modify` | **the whole mailbox** — IMAP can `SELECT` any folder |
+| Revocation | revoke the refresh token | rotate the app password |
+| Audit trail | per-request, in the Cloud project | mailbox-level only |
+| Setup | a Google Cloud project and OAuth consent | an app password |
+| Runs headless | yes | yes |
+
+The reach is the real cost, and it is worse for a **shared** Benefits Operations
+mailbox — which carries customer correspondence — than for a dedicated one. The
+credential cannot be scoped to a label, so the **code** is what keeps the
+containment control the design intends:
+
+`ImapMfaProvider` opens exactly one mailbox, `request.matcher.label`. It never
+selects `INBOX`, never `[Gmail]/All Mail`, and never issues a mailbox-wide
+search. A test pins that, because it is the only thing standing where a scoped
+token would otherwise be.
+
+### Two things that can block it outright
+
+- **Google removed plain-password IMAP.** `MFA_IMAP_APP_PASSWORD` must be an
+  **app password**, which requires 2-Step Verification on the account — and a
+  Workspace admin can disable app passwords for the whole org. Use
+  `MFA_IMAP_ACCESS_TOKEN` for XOAUTH2 instead; set exactly one, enforced at
+  startup by the config schema.
+- **IMAP can be turned off org-wide** in Google Admin. Confirm before debugging
+  a connection failure — the provider's error message names all three causes.
+
+### What it improves on the Gmail UI providers
+
+In Gmail a **label is the mailbox path**, so `SELECT "Access Token (Anthem)"`
+preserves label scoping exactly. And `receivedAt` comes from **INTERNALDATE**,
+the time the server received the mail — real second precision, which *fixes* the
+minute-precision problem rather than working around it, and which a sender
+cannot influence the way it can the `Date:` header.
+
+Note that IMAP's `SEARCH SINCE` takes a **date**, not a timestamp — there is no
+way to say "since 14:32:05" in the protocol. So it is only a coarse server-side
+floor, and the authoritative freshness check stays exactly where it was:
+`selectCode` comparing `receivedAt` against `request.since`.
+
+### Configuration
+
+```jsonc
+"mfa": {
+  "provider": "imap",
+  "imap": {
+    "host": "imap.gmail.com",
+    "port": 993,
+    "secure": true,
+    "userEnv": "MFA_IMAP_USER",
+    "passwordEnv": "MFA_IMAP_APP_PASSWORD"
+  }
+}
+```
+
+`rpa mfa check --label "<label>" --days 1` works for this provider too, and runs
+the provider's own `search()` so it cannot drift from what a run sees. It reports
+counts, senders and the newest date — never a subject, a body or a code.
+
+### When to remove it
+
+When `gmail-api` has been validated against the real mailbox. This is a bridge,
+and the row in the rejection table above is still the long-term view.

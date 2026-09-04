@@ -11,7 +11,7 @@ why it is one task.
 
 Read first, in this order:
 
-1. `CLAUDE.md` — the repo's rules. They are not optional.
+1. `AGENTS.md` — the repo's rules. They are not optional.
 2. `docs/poc/README.md` — what the two PoCs are.
 3. `docs/poc/mfa-gmail.md` — the MFA design and its trade-offs.
 4. `packages/core/src/steps.ts` — already built; read it, you will rely on it.
@@ -117,7 +117,7 @@ Four things that are easy to get wrong, all of which matter:
 - `data/profiles/` and `data/sessions/` are **credential-equivalent**. They are
   already gitignored. Do not copy them anywhere, do not print their contents,
   and say so in any doc you write.
-- Follow the Business/System split in `CLAUDE.md`. Getting it backwards here is
+- Follow the Business/System split in `AGENTS.md`. Getting it backwards here is
   expensive: a Business failure thrown as System burns three logins and three
   MFA codes per group.
 
@@ -125,6 +125,11 @@ Four things that are easy to get wrong, all of which matter:
 
 - Do not automate the Gmail login. The OTP for it is unavailable by design.
 - Do not add `googleapis`, `nodemailer`, or an IMAP client.
+  **Superseded 2026-09-04 for the IMAP half only:** `imapflow` was added to
+  `packages/core` as an interim unblock for the PoCs, because both
+  browser-based Gmail providers need a display and cannot run on the Linux
+  runtime. `googleapis` and `nodemailer` are still out - `gmail-api` uses bare
+  `fetch`. The trade-off is written up in [mfa-gmail.md](mfa-gmail.md).
 - Do not weaken the label scoping to "search the whole mailbox" because it is
   easier. The narrow scope is a security control.
 - Do not change `step()`, the `MfaCodeProvider` interface, or the
