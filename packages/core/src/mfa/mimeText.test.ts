@@ -153,3 +153,36 @@ describe('stripTags', () => {
     assert.equal(stripTags('a&nbsp;b&amp;c'), 'a b&c');
   });
 });
+
+/**
+ * A styled one-time code is often built digit by digit, and stripping each tag
+ * to a space pulls it apart: `6 5 4321` does not match `\b(\d{6})\b`. The code
+ * arrived correctly and the poll would time out, reporting a System failure for
+ * mail that was fine.
+ */
+describe('stripTags - digits split across markup', () => {
+  it('rejoins a code whose digits are individually wrapped', () => {
+    assert.match(stripTags('<span>6</span><span>5</span>4321'), /654321/);
+  });
+
+  it('rejoins digits wrapped one tag at a time, all six', () => {
+    const html = [...'123456'].map((d) => `<b>${d}</b>`).join('');
+    assert.match(stripTags(html), /123456/);
+  });
+
+  it('rejoins across attributes and whitespace between the tags', () => {
+    assert.match(
+      stripTags('<td style="x">12</td>\n  <td style="y">3456</td>'),
+      /123456/,
+    );
+  });
+
+  /** The other half of the trade-off: words must NOT be run together. */
+  it('still separates words in adjacent blocks', () => {
+    assert.equal(stripTags('<p>one</p><p>two</p>'), 'one two');
+  });
+
+  it('leaves a plain contiguous code alone', () => {
+    assert.match(stripTags('<p>Your code is 654321.</p>'), /654321/);
+  });
+});

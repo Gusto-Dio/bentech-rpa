@@ -11,10 +11,35 @@
  * time out on mail that had arrived correctly and report it as a System failure.
  */
 
-/** Strips markup so a code in an HTML body is still findable. */
+/**
+ * Strips markup so a code in an HTML body is still findable.
+ *
+ * ── TAGS BETWEEN DIGITS ARE REMOVED WITHOUT A SPACE ──────────────────────────
+ * Every other tag becomes a space, because `<p>one</p><p>two</p>` must not
+ * become `onetwo`. But a styled one-time code is often built digit by digit -
+ * `<span>6</span><span>5</span>4321` - and spacing those apart gives
+ * `6 5 4321`, which `\b(\d{6})\b` does not match. The code arrived perfectly
+ * and the poll would time out and report a System failure.
+ *
+ * So tag runs sitting strictly BETWEEN two digits collapse to nothing first,
+ * and everything else keeps the space.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
 export function stripTags(html: string): string {
-  return html
-    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ')
+  let out = html.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, ' ');
+
+  /**
+   * Looped because one pass leaves the next boundary un-joined: in
+   * `6</span><span>5</span>4`, collapsing around the first digit pair creates a
+   * new digit-tag-digit boundary that the same pattern then matches.
+   */
+  for (let pass = 0; pass < 6; pass += 1) {
+    const joined = out.replace(/(\d)(?:\s*<[^>]+>\s*)+(?=\d)/g, '$1');
+    if (joined === out) break;
+    out = joined;
+  }
+
+  return out
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/gi, ' ')
     .replace(/&amp;/gi, '&')

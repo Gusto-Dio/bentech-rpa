@@ -212,7 +212,24 @@ export class ImapMfaProvider implements MfaCodeProvider, MfaMailbox {
      * ───────────────────────────────────────────────────────────────────────
      */
     const found = await session.search({ since: sinceDate(request.since) }, { uid: true });
-    const uids = (found === false ? [] : found).slice(-this.#maxCandidates);
+
+    /**
+     * `false` is not "no mail". imapflow returns it when the SEARCH itself did
+     * not succeed, and coercing that to an empty list made a failed search
+     * indistinguishable from an empty label: the poll would keep waiting and
+     * eventually report "no code arrived", blaming the carrier for our own
+     * broken query or a dropped connection.
+     */
+    if (found === false) {
+      throw new SystemException(
+        `IMAP SEARCH failed against the "${request.matcher.label}" mailbox. This is not an empty ` +
+          'label - the server rejected or dropped the search, so the connection or the query is ' +
+          'at fault rather than the mail.',
+        { details: { label: request.matcher.label } },
+      );
+    }
+
+    const uids = found.slice(-this.#maxCandidates);
 
     if (uids.length === 0) {
       this.#logger.debug(
@@ -237,7 +254,7 @@ export class ImapMfaProvider implements MfaCodeProvider, MfaMailbox {
     messages.sort((a, b) => b.receivedAt.getTime() - a.receivedAt.getTime());
 
     this.#logger.debug(
-      { candidates: messages.length, matched: found === false ? 0 : found.length, label: request.matcher.label },
+      { candidates: messages.length, matched: found.length, label: request.matcher.label },
       'Listed candidates in the MFA label over IMAP',
     );
 
@@ -385,9 +402,17 @@ function toMfaMessage(message: ImapFetchedMessage): MfaMessage | undefined {
 /**
  * The real session.
  *
- * Cast through `unknown` because `ImapSession` is deliberately a narrow slice of
- * imapflow's surface - declared locally so this provider can be tested against a
- * fake, which is the whole reason `createSession` is injectable.
+ * ── NOT CAST THROUGH `unknown` ──────────────────────────────────────────────
+ * A `as unknown as ImapSession` here would suppress exactly the check worth
+ * having: whether imapflow's real method shapes still match the local slice.
+ * That matters more than usual because a wrong FETCH range does not throw - it
+ * yields nothing, and every poll then times out while the tests, which run
+ * against a fake, stay green.
+ *
+ * A direct `as ImapSession` keeps TypeScript's assignability check, so drift in
+ * `search`, `fetch` or `messageFlagsAdd` becomes a compile error rather than a
+ * silent timeout. If imapflow ever changes shape, this is where it should hurt.
+ * ───────────────────────────────────────────────────────────────────────────
  */
 function defaultCreateSession(credentials: ImapCredentials, config: ImapConfig): ImapSession {
   return new ImapFlow({
@@ -403,5 +428,5 @@ function defaultCreateSession(credentials: ImapCredentials, config: ImapConfig):
      */
     logger: false,
     emitLogs: false,
-  }) as unknown as ImapSession;
+  }) as ImapSession;
 }

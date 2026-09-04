@@ -134,6 +134,14 @@ async function printChromeCommand(args: ParsedArgs): Promise<number> {
  * or a code, and only the LENGTH of any digit run, exactly as the Gmail
  * diagnosis does.
  */
+/**
+ * How many messages `rpa mfa check` pulls, far above the provider's polling cap.
+ *
+ * One constant because the "(capped)" label compares against it: two literals
+ * meant that raising the cap would silently make the display lie.
+ */
+const CHECK_MAX_CANDIDATES = 400;
+
 async function checkOverImap(config: MfaConfig, label: string, days: number): Promise<number> {
   line(`  host     : ${config.imap.host}:${config.imap.port}`);
   line(
@@ -158,7 +166,7 @@ async function checkOverImap(config: MfaConfig, label: string, days: number): Pr
      * cap of 25 hides on a busy mailbox - measured, it dropped
      * noreply@broker.anthem.com from the report entirely.
      */
-    maxCandidates: 400,
+    maxCandidates: CHECK_MAX_CANDIDATES,
   });
 
   try {
@@ -191,7 +199,11 @@ async function checkOverImap(config: MfaConfig, label: string, days: number): Pr
       senders.set(address, entry);
     }
 
-    line(`  messages : ${messages.length}${messages.length >= 400 ? style.dim(' (capped)') : ''}`);
+    line(
+      `  messages : ${messages.length}${
+        messages.length >= CHECK_MAX_CANDIDATES ? style.dim(' (capped)') : ''
+      }`,
+    );
     line();
     line('  Senders in this label');
     line(style.dim('    address                                                  msgs   with a 6-digit code'));

@@ -258,6 +258,23 @@ describe('ImapMfaProvider - reading a message', () => {
     assert.ok(!messages.some((message) => message.id === '1'));
   });
 
+  /**
+   * imapflow returns `false` when the SEARCH did not succeed, which is not the
+   * same as an empty label. Coercing it to `[]` made a broken query or a
+   * dropped connection indistinguishable from "no mail yet": the poll waited
+   * out its budget and blamed the carrier.
+   */
+  it('raises a System failure when the search itself fails, rather than reporting no mail', async () => {
+    const session = fakeSession([mail()]);
+    session.search = async () => false;
+
+    await assert.rejects(() => providerWith(session).search(request()), (error: unknown) => {
+      assert.ok(error instanceof SystemException);
+      assert.match(error.message, /not an empty label/i);
+      return true;
+    });
+  });
+
   it('does not fetch at all when the search matches nothing', async () => {
     const session = fakeSession([]);
     assert.deepEqual(await providerWith(session).search(request()), []);
@@ -269,17 +286,24 @@ describe('ImapMfaProvider - reading a message', () => {
     assert.deepEqual(await providerWith(fakeSession([undated])).search(request()), []);
   });
 
-  it('decodes a base64 HTML body, where a six-digit run is otherwise invisible', async () => {
-    const html = Buffer.from('<p>Your code is <b>654321</b></p>').toString('base64');
+  /**
+   * Wiring only. base64 decoding and tag-stripping are pure-function concerns
+   * and are covered properly in mimeText.test.ts; what this has to prove is
+   * that the provider feeds `source` through `extractTextFromRfc822` at all
+   * rather than handing the raw bytes on. A base64 body makes that
+   * unambiguous - the marker is unreadable unless it was decoded.
+   */
+  it('passes the raw source through the MIME reader rather than using it raw', async () => {
+    const encoded = Buffer.from('marker-decoded 654321').toString('base64');
     const [message] = await providerWith(
       fakeSession([
         mail({
-          source: `Content-Type: text/html\r\nContent-Transfer-Encoding: base64\r\n\r\n${html}`,
+          source: `Content-Type: text/plain\r\nContent-Transfer-Encoding: base64\r\n\r\n${encoded}`,
         }),
       ]),
     ).search(request());
 
-    assert.match(message?.text ?? '', /654321/);
+    assert.match(message?.text ?? '', /marker-decoded/);
   });
 });
 
