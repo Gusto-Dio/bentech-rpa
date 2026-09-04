@@ -129,6 +129,55 @@ export class AnthemLoginPage implements CarrierLoginFlow {
   }
 
   /**
+   * Re-authenticates a SAML hand-off that asked for the password again.
+   *
+   * ── WHY THIS IS NEEDED ──────────────────────────────────────────────────────
+   * The portal session and the Salesforce **community** session expire
+   * independently. When the community one has lapsed, the SAML hop that
+   * `Create Quote` performs lands back on
+   * `login.broker.anthem.com/app/.../sso/saml` showing a single Password field -
+   * while `signedInVia: "reused"` says the portal session is perfectly valid.
+   *
+   * It is intermittent, and that is what made it hard to read: the same session
+   * file passed the hop on one machine and failed on another, then failed on the
+   * first machine an hour later. Runtime and route were both red herrings; only
+   * elapsed time matters. Observed 2026-09-04 on host and in a container.
+   *
+   * Okta reuses `credentials.passcode` and the `Next` submit here, exactly as on
+   * the normal password screen, so no new locators are needed. MFA is not
+   * re-requested for this hop - the device is already trusted; only the password
+   * is asked for.
+   *
+   * Returns false when there was nothing to resolve, so a caller can treat the
+   * happy path as the common one.
+   * ───────────────────────────────────────────────────────────────────────────
+   */
+  async resolveSamlChallenge(page: Page, password: string, timeoutMs = 45_000): Promise<boolean> {
+    const passwordField = page.locator('input[name="credentials.passcode"]').filter({ visible: true });
+
+    const challenged = await passwordField
+      .first()
+      .waitFor({ state: 'visible', timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!challenged) return false;
+
+    await passwordField.first().fill(password);
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+
+    /**
+     * Wait to leave Okta entirely rather than for a specific destination: the
+     * hop can land on the community home or deep in the wizard depending on
+     * where it was interrupted, and both are success.
+     */
+    await page.waitForURL((url) => !url.host.endsWith('login.broker.anthem.com'), {
+      timeout: timeoutMs,
+    });
+
+    return true;
+  }
+
+  /**
    * Username, advance, then password - WITHOUT submitting.
    *
    * The two halves are split across enterCredentials and submitCredentials so

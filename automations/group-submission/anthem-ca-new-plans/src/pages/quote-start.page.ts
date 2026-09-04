@@ -30,13 +30,38 @@ const DASHBOARD_TIMEOUT_MS = 45_000;
 /** A screen transition on this portal is a client-side render, not a page load. */
 const SCREEN_TIMEOUT_MS = 20_000;
 
+/** Okta, where the SAML hand-off lands when the community session has lapsed. */
+const OKTA_HOST = 'login.broker.anthem.com';
+
+/**
+ * The host of a URL, or '' when it cannot be parsed.
+ *
+ * Parsed rather than pattern-matched, for the reason rule 9's gotcha records:
+ * the OAuth flow has Okta and the portal quoting each other in query strings, so
+ * a substring test matches the wrong page in both directions.
+ */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host;
+  } catch {
+    return '';
+  }
+}
+
 export class QuoteStartPage {
   readonly #page: Page;
   readonly #steps: StepContext;
+  readonly #resolveSaml: ((page: Page) => Promise<boolean>) | undefined;
 
-  constructor(page: Page, steps: StepContext) {
+  /**
+   * `resolveSaml` re-authenticates the platform hand-off when it asks for the
+   * password again. Injected rather than built here so this page object needs
+   * neither the config nor the secret resolver - the caller owns both.
+   */
+  constructor(page: Page, steps: StepContext, resolveSaml?: (page: Page) => Promise<boolean>) {
     this.#page = page;
     this.#steps = steps;
+    this.#resolveSaml = resolveSaml;
   }
 
   /**
@@ -151,6 +176,56 @@ export class QuoteStartPage {
     if (result.value === undefined) {
       throw new SystemException('Create Quote did not open the Anthem quoting platform tab.');
     }
+
+    /**
+     * ── THE SAML HOP CAN ASK FOR THE PASSWORD AGAIN ─────────────────────────
+     * `Create Quote` hands off to the Salesforce platform through Okta SAML,
+     * and that hop can land on `login.broker.anthem.com/app/.../sso/saml` with
+     * a Password field instead of the platform - observed 2026-09-04 in a
+     * container whose portal session was otherwise fine (`signedInVia:
+     * "reused"`).
+     *
+     * Without this check the tab is returned anyway and the failure surfaces
+     * three lines later as "not in the expected state for: answer: is the group
+     * currently covered by Anthem" - which reads like a broken locator on a
+     * screen that was never reached. Naming the actual cause is the whole
+     * value here.
+     *
+     * SYSTEM, not Business: the session needs re-authenticating, and the
+     * runner's recovery does exactly that - relaunch the browser, re-run
+     * `initialize()`, sign in again. A retry can plausibly succeed, which is
+     * the test for System.
+     *
+     * Not yet reproducible on demand - see open-questions.md. The container is
+     * NOT the variable: it reaches the platform cleanly by the launchpad route.
+     * ────────────────────────────────────────────────────────────────────────
+     */
+    if (hostOf(result.value.url()).endsWith(OKTA_HOST)) {
+      /**
+       * Recover rather than fail. The password is all Okta wants for this hop -
+       * the device is already trusted, so no MFA code is spent - and answering
+       * it is far cheaper than a SystemException that relaunches the browser,
+       * re-runs initialize() and retries the whole transaction, creating a
+       * second real quote for the same group in the process.
+       */
+      const recovered = (await this.#resolveSaml?.(result.value)) ?? false;
+      this.#steps.logger.warn(
+        { recovered },
+        recovered
+          ? 'The platform hand-off asked for the password again; re-authenticated'
+          : 'The platform hand-off asked for the password again and could not be recovered',
+      );
+
+      if (!recovered || hostOf(result.value.url()).endsWith(OKTA_HOST)) {
+        throw new SystemException(
+          'Create Quote handed off to Okta and was asked to authenticate again, instead of ' +
+            'opening the quoting platform. The portal session is valid but the community session ' +
+            'had lapsed, and re-authenticating it did not succeed.',
+          { details: { landedOn: hostOf(result.value.url()) } },
+        );
+      }
+    }
+
     return result.value;
   }
 }

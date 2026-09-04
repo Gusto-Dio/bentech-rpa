@@ -128,6 +128,23 @@ async function main(): Promise<void> {
     await platform.waitForLoadState('domcontentloaded').catch(() => undefined);
     await platform.waitForTimeout(8_000);
 
+    /**
+     * The community session expires independently of the portal one, so this hop
+     * can ask for the password again even when sign-in reported `reused`. The
+     * login page knows how to answer it; this is the same recovery the
+     * automation performs.
+     */
+    const login = new AnthemLoginPage(auto);
+    const resolved = await login.resolveSamlChallenge(
+      platform,
+      await secrets.require(auto.passwordEnv),
+    );
+    if (resolved) {
+      console.log('  STEP 2 saml     : re-authenticated (the community session had lapsed)');
+      await platform.waitForTimeout(5_000);
+      await session.saveSession(context);
+    }
+
     const url = platform.url();
     const host = safeHost(url);
     const challenged = await platform

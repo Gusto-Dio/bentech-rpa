@@ -125,7 +125,7 @@ pnpm exec playwright install chromium      # macOS; add --with-deps on Linux
 cp .env.example .env                       # then fill it from 1Password
 
 pnpm rpa doctor                            # will this machine actually run one
-pnpm check                                 # typecheck + validate + 357 tests
+pnpm check                                 # typecheck + validate + the full suite
 ```
 
 Node 24, pinned in `.nvmrc` / `mise.toml`.

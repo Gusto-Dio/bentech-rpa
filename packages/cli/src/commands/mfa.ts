@@ -2,7 +2,7 @@ import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import {
-  GmailUiMfaProvider,
+  createMfaProvider,
   ImapMfaProvider,
   PlaywrightGmailUiPage,
   SecretResolver,
@@ -220,7 +220,8 @@ async function checkOverImap(config: MfaConfig, label: string, days: number): Pr
     errorLine(style.red(cause instanceof Error ? cause.message : String(cause)));
     return 1;
   } finally {
-    await provider.close();
+    // Optional on the interface, and idempotent where implemented.
+    await provider.close?.();
   }
 }
 
@@ -497,14 +498,29 @@ async function probeCode(args: ParsedArgs): Promise<number> {
 
   heading('rpa mfa probe');
 
-  const mode = modeFor(config, repoRoot);
-  if (mode === undefined || label === undefined || from === undefined) {
+  if (label === undefined || from === undefined) {
     errorLine(
-      style.red('Usage: rpa mfa probe --label "<gmail label>" --from "sender1,sender2" [--minutes 60]'),
+      style.red('Usage: rpa mfa probe --label "<label>" --from "sender1,sender2" [--minutes 60]'),
     );
-    errorLine(style.dim('mfa.provider must be gmail-cdp or gmail-profile.'));
     return 2;
   }
+
+  /**
+   * The CONFIGURED provider, not a hardcoded one.
+   *
+   * This used to build a `GmailUiMfaProvider` directly and refuse anything else,
+   * which quietly defeated the point of the MFA seam: the moment an environment
+   * moved to `imap`, the command that exists to prove the mailbox works could no
+   * longer be run against the provider a run would actually use. Probing a
+   * different provider than production uses proves very little.
+   */
+  if (config.provider === 'manual') {
+    errorLine(style.red('mfa.provider is "manual", which reads no mailbox - there is nothing to probe.'));
+    return 2;
+  }
+
+  /** Only the Gmail UI providers can offer the post-failure label diagnosis below. */
+  const mode = modeFor(config, repoRoot);
 
   const fromAllowList = from.split(',').map((v) => v.trim()).filter((v) => v.length > 0);
   const since = new Date(Date.now() - minutes * 60_000);
@@ -515,8 +531,16 @@ async function probeCode(args: ParsedArgs): Promise<number> {
   line(style.yellow('  This marks a message read. Only the fact of success is printed, never the code.'));
   line();
 
+  line(`  provider  : ${config.provider}`);
+  line();
+
   const logger = createLogger({ level: 'warn', pretty: false, base: {} });
-  const provider = new GmailUiMfaProvider({ mode, logger, pollIntervalMs: 5_000 });
+  const provider = createMfaProvider({
+    config,
+    logger,
+    secrets: new SecretResolver(),
+    repoRoot,
+  });
 
   try {
     const code = await provider.waitForCode({
@@ -550,7 +574,19 @@ async function probeCode(args: ParsedArgs): Promise<number> {
      * silently - which is exactly what it did the first time. close() is
      * idempotent, so the finally below is still safe.
      */
-    await provider.close();
+    await provider.close?.();
+
+    /**
+     * The label dump below drives Gmail's UI, so it is only available for the
+     * browser-based providers. For `imap` or `gmail-api`, `rpa mfa check` gives
+     * the same picture without a browser.
+     */
+    if (mode === undefined) {
+      line();
+      line(style.dim(`  For a "${config.provider}" provider, run \`rpa mfa check --label "${label}"\``));
+      line(style.dim('  to see what the label holds and who sends to it.'));
+      return 1;
+    }
 
     const logger2 = createLogger({ level: 'silent', pretty: false, base: {} });
     let page: PlaywrightGmailUiPage | undefined;
@@ -586,6 +622,7 @@ async function probeCode(args: ParsedArgs): Promise<number> {
 
     return 1;
   } finally {
-    await provider.close();
+    // Optional on the interface, and idempotent where implemented.
+    await provider.close?.();
   }
 }
