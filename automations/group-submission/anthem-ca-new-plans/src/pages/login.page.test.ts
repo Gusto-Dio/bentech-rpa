@@ -94,6 +94,38 @@ describe('the Create Quote SAML guard', () => {
   });
 
   /**
+   * THE HOLE THIS CLOSES. The detection used to return 'platform' early when
+   * the page was not on Okta yet - and a fresh popup is `about:blank` or a
+   * pre-Okta redirect at its first `domcontentloaded`. A challenge arriving one
+   * redirect later was missed, and the guard reported success on exactly the
+   * case it exists to catch.
+   */
+  it('does not decide from the URL before the race runs', () => {
+    const detect = body.slice(body.indexOf('#awaitHandOff(platform'));
+    const upToRace = detect.slice(0, detect.indexOf('Promise.race'));
+    assert.doesNotMatch(upToRace, /return 'platform'/);
+  });
+
+  /**
+   * `about:blank` is "not Okta" too, so leaving Okta is not by itself success -
+   * treating it as such is what made the early return wrong.
+   */
+  it('requires an http(s) destination, not merely a non-Okta URL', () => {
+    assert.match(body, /protocol\.startsWith\('http'\)/);
+  });
+
+  it('re-confirms the destination after a successful recovery', () => {
+    const branch = body.slice(body.indexOf("=== 'challenged'"));
+    assert.match(branch.slice(0, 1600), /#isSettledOffOkta/);
+  });
+
+  /** "could not be recovered" with no reason is a poor thing to read at 03:00. */
+  it('keeps the underlying cause instead of collapsing it to a boolean', () => {
+    assert.match(body, /cause = thrown/);
+    assert.match(body, /#handOffFailed\([^)]*cause\)/);
+  });
+
+  /**
    * BUSINESS, and this reverses an earlier version of this test.
    *
    * By the time the guard fails, `Create Quote` has already created a REAL

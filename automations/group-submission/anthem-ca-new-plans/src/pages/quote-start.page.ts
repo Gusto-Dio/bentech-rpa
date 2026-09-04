@@ -31,21 +31,6 @@ const DASHBOARD_TIMEOUT_MS = 45_000;
 /** A screen transition on this portal is a client-side render, not a page load. */
 const SCREEN_TIMEOUT_MS = 20_000;
 
-/**
- * The host of a URL, or '' when it cannot be parsed.
- *
- * Parsed rather than pattern-matched, for the reason rule 9's gotcha records:
- * the OAuth flow has Okta and the portal quoting each other in query strings, so
- * a substring test matches the wrong page in both directions.
- */
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host;
-  } catch {
-    return '';
-  }
-}
-
 export class QuoteStartPage {
   readonly #page: Page;
   readonly #steps: StepContext;
@@ -70,11 +55,21 @@ export class QuoteStartPage {
    * as the browser leaves Okta, without waiting out the challenge budget.
    */
   async #awaitHandOff(platform: Page): Promise<'platform' | 'challenged' | 'stuck'> {
-    if (!hostOf(platform.url()).endsWith(OKTA_HOST)) return 'platform';
-
+    /**
+     * ── NO EARLY RETURN ON THE CURRENT URL ───────────────────────────────────
+     * This used to return 'platform' immediately when the page was not on Okta
+     * yet, which skipped the detection entirely: a fresh popup is `about:blank`
+     * or a pre-Okta redirect at its first `domcontentloaded`, so a challenge
+     * arriving one redirect later was missed and the guard reported success on
+     * the very case it exists to catch.
+     *
+     * `waitForURL` resolves immediately when the predicate already holds, so
+     * always racing costs the happy path nothing.
+     * ────────────────────────────────────────────────────────────────────────
+     */
     return Promise.race([
       platform
-        .waitForURL((url) => !url.host.endsWith(OKTA_HOST), { timeout: SCREEN_TIMEOUT_MS })
+        .waitForURL((url) => this.#isSettledOffOkta(url), { timeout: SCREEN_TIMEOUT_MS })
         .then(() => 'platform' as const)
         .catch(() => 'stuck' as const),
       platform
@@ -84,6 +79,17 @@ export class QuoteStartPage {
         .then(() => 'challenged' as const)
         .catch(() => 'stuck' as const),
     ]);
+  }
+
+  /**
+   * Off Okta AND actually somewhere - `about:blank` is "not Okta" too, and
+   * treating it as success is what let the early return above miss a challenge.
+   * The platform host itself is deliberately not hardcoded here: it has already
+   * changed once during this PoC, and a success signal that breaks when Anthem
+   * renames its community would be worse than this one.
+   */
+  #isSettledOffOkta(url: URL): boolean {
+    return !url.host.endsWith(OKTA_HOST) && url.protocol.startsWith('http');
   }
 
   /**
@@ -101,13 +107,16 @@ export class QuoteStartPage {
    * different answer? No.
    * ───────────────────────────────────────────────────────────────────────────
    */
-  #handOffFailed(because: string): BusinessException {
+  #handOffFailed(because: string, cause?: unknown): BusinessException {
     return new BusinessException(
       `Create Quote opened the platform tab but the hand-off did not complete: ${because}. ` +
         'The portal session is valid; the Salesforce community session had lapsed. A quote has ' +
         'ALREADY been created for this group, so this is not retried - a retry would create a ' +
         'second one. Re-run once the session is re-established, and clear the orphan quote.',
-      { details: { reason: because } },
+      {
+        details: { reason: because },
+        ...(cause === undefined ? {} : { cause }),
+      },
     );
   }
 
@@ -247,15 +256,39 @@ export class QuoteStartPage {
        * Recover rather than fail: the password is all Okta wants for this hop -
        * the device is already trusted, so no MFA code is spent.
        */
-      const recovered = (await this.#resolveSaml?.(platform).catch(() => false)) ?? false;
+      /**
+       * The cause is kept rather than collapsed into a boolean. A missing
+       * ANTHEM_PORTAL_PASSWORD, a detached field and an unexpected factor
+       * screen all produce `false`, and "could not be recovered" with no reason
+       * is a poor thing to read at 03:00.
+       */
+      let cause: unknown;
+      const recovered =
+        (await this.#resolveSaml?.(platform).catch((thrown: unknown) => {
+          cause = thrown;
+          return false;
+        })) ?? false;
+
       this.#steps.logger.warn(
-        { recovered },
+        { recovered, ...(cause === undefined ? {} : { err: cause }) },
         recovered
           ? 'The platform hand-off asked for the password again; re-authenticated'
           : 'The platform hand-off asked for the password again and could not be recovered',
       );
 
-      if (!recovered) throw this.#handOffFailed('the password prompt could not be answered');
+      if (!recovered) {
+        throw this.#handOffFailed('the password prompt could not be answered', cause);
+      }
+
+      /**
+       * Recovery reports only that Okta was left, and it can be left for an
+       * error page as easily as for the platform. Confirm we actually settled
+       * somewhere usable before handing the tab on, or the next step fails on a
+       * screen nobody has identified.
+       */
+      if (!this.#isSettledOffOkta(new URL(platform.url()))) {
+        throw this.#handOffFailed('re-authentication left the browser somewhere unexpected');
+      }
     } else if (hop === 'stuck') {
       throw this.#handOffFailed('it stayed on Okta without ever showing a password prompt');
     }

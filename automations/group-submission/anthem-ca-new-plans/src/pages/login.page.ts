@@ -167,7 +167,7 @@ export class AnthemLoginPage implements CarrierLoginFlow {
    * ───────────────────────────────────────────────────────────────────────────
    */
   async resolveSamlChallenge(page: Page, password: string, timeoutMs = 45_000): Promise<boolean> {
-    const passwordField = page.locator('input[name="credentials.passcode"]').filter({ visible: true });
+    const passwordField = page.locator(OKTA_PASSCODE_FIELD).filter({ visible: true });
 
     const challenged = await passwordField
       .first()
