@@ -173,6 +173,88 @@ Store 1 passing while store 3 is empty is the trap: `Verify return code: 0`
 looks like success, and the browser still fails. All three are configured in the
 Dockerfile; if the browser alone fails, check the `certutil -L` output.
 
+## Running a carrier automation in the container
+
+Every automation runs headless, except the ones a carrier will not let run
+headless. **Anthem's broker portal serves `Access Denied` to headless Chromium**
+and loads normally headed — bot protection, not a bug — so the automation that
+most needs to be unattended is the one that cannot be headless.
+
+A container has no display, which used to leave the Ubuntu runtime with no
+working path at all. The image now installs **xvfb**, and the entrypoint starts a
+virtual display only when a run asks for a headed browser:
+
+```bash
+# Everything else - headless, the default
+docker compose run --rm rpa group-submission/carrier-portal-submission-demo
+
+# Anthem - headed, on a virtual display the entrypoint supplies
+HEADLESS=false docker compose run --rm rpa group-submission/anthem-ca-new-plans
+```
+
+Nothing else changes: `HEADLESS=false` with no `DISPLAY` on Linux is what
+triggers it. If `DISPLAY` is already set — a real X socket mounted in, or a
+remote server — that is respected instead of being shadowed.
+
+> **Two things that catch people out.**
+>
+> **Compose reads the project `.env` for its own interpolation**, so
+> `HEADLESS: ${HEADLESS:-true}` resolves to `false` on any machine whose `.env`
+> sets `HEADLESS=false` — which a developer's does. The container is then headed
+> without anyone asking. Harmless locally, but on a server pass `HEADLESS`
+> explicitly rather than relying on the default.
+>
+> **Overriding the entrypoint loses the display.** `--entrypoint pnpm` skips the
+> script that starts xvfb, so a headed command silently gets the 403 instead.
+> Use `--entrypoint tooling/docker/with-display.sh` and put the real command
+> after the service name — that is exactly why the display logic is its own
+> wrapper rather than living inside `entrypoint.sh`.
+
+### Prove the runtime before trusting it
+
+`rpa doctor` tells you Chromium starts. It cannot tell you the **carrier** will
+accept it, and that is the part that breaks:
+
+```bash
+docker compose run --rm -e HEADLESS=false \
+  --entrypoint tooling/docker/with-display.sh rpa \
+  pnpm tsx tooling/scripts/check-portal-access.ts
+```
+
+Credential-free and read-only: it loads the login page and reports what came
+back. Measured on the host — headless returns **403 Access Denied** with an
+Akamai reference, headed returns **200 Producer Toolbox** with the sign-in field
+present. Run it after any base-image bump, because this is exactly the kind of
+thing a Chromium upgrade changes silently.
+
+`rpa doctor` also now fails, rather than warning, when `HEADLESS=false` is set on
+Linux with neither a `DISPLAY` nor `xvfb-run` — that combination cannot start a
+browser, and it is worth saying so before a run finds out.
+
+### What the container still needs from outside
+
+| | |
+|---|---|
+| **Credentials** | Environment variables only, never baked into the image. `docker-compose.yml` reads `.env` if present, so a server that injects real env vars needs no file |
+| **MFA** | Use `mfa.provider: "imap"`. The Gmail UI providers drive a browser profile a human signed in to, which does not survive a container. IMAP needs no browser |
+| **`./data`** | Mounted, and it matters: `data/sessions/` is how a portal session is reused between runs. Without it every run signs in again and spends an MFA code |
+| **`./artifacts`** | Mounted, or the evidence for a failed run disappears with the container |
+| **`shm_size`** | 1GB. Chromium crashes on content-heavy pages with Docker's 64MB default |
+| **uid** | On a host whose deploy user is not uid 1000, the mounts are unwritable by the image's `pwuser`. Match the host uid rather than running as root — see the commented `user:` line in the compose file |
+
+### Still open
+
+- **Architecture.** Build explicitly for the servers with
+  `docker buildx build --platform linux/amd64`, which cross-builds slowly on
+  Apple Silicon. That is the price of not shipping an arm64 image to an x86_64
+  host.
+- **Headed is heavier.** A headed Chromium on a virtual display costs more CPU
+  and memory than headless. Size the host accordingly; this has not been load
+  tested with concurrent runs.
+- **The queue is single-writer.** Two containers running the same automation
+  against the local JSON queue will fight. Parallelism needs the Orchestrator
+  backend, which is unit-tested but never validated against a live tenant.
+
 ## Scheduling (not built yet)
 
 `automation.json` already declares `schedule.cron` and `schedule.timezone`;

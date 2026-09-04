@@ -3,6 +3,11 @@
 #   docker compose run --rm rpa group-submission/carrier-portal-submission-demo
 #   docker compose run --rm rpa member-submission/roster-file-validation-demo
 #   docker compose run --rm rpa                  # no id: lists what is available
+#
+# A carrier portal that refuses headless Chromium needs a headed browser. The
+# container has no display, so the entrypoint gives it a virtual one:
+#
+#   HEADLESS=false docker compose run --rm rpa group-submission/anthem-ca-new-plans
 name: bentech-rpa
 
 services:
@@ -24,8 +29,16 @@ services:
 
     environment:
       APP_ENV: ${APP_ENV:-dev}
-      # No display in a container, ever. Not overridable from the host by accident.
-      HEADLESS: "true"
+      # Headless by default - faster, lighter, and right for every automation
+      # that a carrier does not block.
+      #
+      # Anthem is the exception: its broker portal serves `Access Denied` to
+      # headless Chromium. Those runs need HEADLESS=false, and the entrypoint
+      # then starts a headed browser on a virtual display (xvfb) rather than
+      # requiring a real one:
+      #
+      #   HEADLESS=false docker compose run --rm rpa group-submission/anthem-ca-new-plans
+      HEADLESS: ${HEADLESS:-true}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_PRETTY: ${LOG_PRETTY:-false}
 

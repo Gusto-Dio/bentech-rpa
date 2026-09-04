@@ -209,10 +209,31 @@ encrypted TIN and a signed legal document. **Approved internal Slack workspace
 only** — not Slack Connect, not an external channel, not a personal drive. It is
 gitignored and deliberately not committed.
 
-### ⚠ Linux/headless is unresolved
+### ⚠ Headless is not an option for Anthem
 
-Anthem blocks headless Chromium, so the Ubuntu runtime has no working path yet —
-it needs `xvfb`. Today this is a headed, macOS-only process.
+Anthem serves `Access Denied` to headless Chromium — a 403 with an Akamai
+reference — and loads normally headed. `.env` sets `HEADLESS=false` for that
+reason, and on a laptop that just works.
+
+**In the container it also works now:** the image installs `xvfb` and the
+entrypoint starts a virtual display when `HEADLESS=false` and no `DISPLAY` is
+set, so this runs on a server with no screen:
+
+```bash
+HEADLESS=false docker compose run --rm rpa group-submission/anthem-ca-new-plans
+```
+
+Before trusting a new runtime, prove the carrier accepts it — `rpa doctor` only
+proves Chromium starts:
+
+```bash
+docker compose run --rm -e HEADLESS=false \
+  --entrypoint tooling/docker/with-display.sh rpa \
+  pnpm tsx tooling/scripts/check-portal-access.ts
+```
+
+Note that headed costs more CPU and memory than headless, and this has not been
+load tested with concurrent runs.
 
 ---
 

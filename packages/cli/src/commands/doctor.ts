@@ -121,19 +121,59 @@ function checkEnvFile(repoRoot: string): Check {
   };
 }
 
+/**
+ * Whether a headed run can actually get a browser on screen HERE.
+ *
+ * `HEADLESS=false` is not a developer-only setting any more: Anthem's portal
+ * serves `Access Denied` to headless Chromium, so the automation that most needs
+ * to run unattended is the one that must run headed. What decides whether that
+ * works is not the flag, it is whether this machine can give Chromium a display
+ * - a real one on a laptop, or xvfb on a server.
+ *
+ * The old version of this check just warned that HEADLESS=false "would fail on a
+ * headless server", which was true and unhelpful: it named the symptom and not
+ * the fix, on the one setting a carrier forces.
+ */
 function checkHeadless(): Check {
   const headless = process.env['HEADLESS'];
+
   if (headless === undefined || headless === '') {
     return { name: 'headless', level: 'pass', detail: 'default (true) - safe for a server with no display' };
   }
-  if (headless === 'false') {
+  if (headless !== 'false') {
+    return { name: 'headless', level: 'pass', detail: `HEADLESS=${headless}` };
+  }
+
+  // macOS and Windows always have a window server; only Linux can be displayless.
+  if (process.platform !== 'linux') {
     return {
       name: 'headless',
-      level: 'warn',
-      detail: 'HEADLESS=false - fine on a developer machine, would fail on a headless server',
+      level: 'pass',
+      detail: `HEADLESS=false on ${process.platform} - this machine has a display`,
     };
   }
-  return { name: 'headless', level: 'pass', detail: `HEADLESS=${headless}` };
+
+  const display = process.env['DISPLAY'];
+  if (display !== undefined && display !== '') {
+    return { name: 'headless', level: 'pass', detail: `HEADLESS=false with DISPLAY=${display}` };
+  }
+
+  const hasXvfb = ['/usr/bin/xvfb-run', '/bin/xvfb-run'].some((candidate) => existsSync(candidate));
+  if (hasXvfb) {
+    return {
+      name: 'headless',
+      level: 'pass',
+      detail: 'HEADLESS=false, no DISPLAY, but xvfb-run is available - the entrypoint will supply one',
+    };
+  }
+
+  return {
+    name: 'headless',
+    level: 'fail',
+    detail:
+      'HEADLESS=false on Linux with no DISPLAY and no xvfb-run: Chromium cannot start. ' +
+      'Install xvfb (the image in tooling/docker/Dockerfile does), or run headless.',
+  };
 }
 
 async function checkWritable(repoRoot: string, dirname: string): Promise<Check> {

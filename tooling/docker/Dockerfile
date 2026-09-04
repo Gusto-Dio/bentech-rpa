@@ -7,6 +7,11 @@
 #   docker build  -f tooling/docker/Dockerfile -t bentech-rpa:local .
 #   docker run --rm --shm-size=1g bentech-rpa:local <automation-id>
 #
+# Carrier portals that refuse headless Chromium need a headed browser on a
+# virtual display. The entrypoint arranges that; the caller only asks for it:
+#
+#   docker run --rm --shm-size=1g -e HEADLESS=false bentech-rpa:local <id>
+#
 # For the Ubuntu servers, build explicitly for their architecture. On Apple
 # Silicon this cross-builds (slowly), which is the price of not shipping an
 # arm64 image to an x86_64 host:
@@ -59,8 +64,18 @@ ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
 #
 # This is the least obvious part of the whole setup, and it is the difference
 # between "TLS works in the container" and "TLS works in the container's browser".
+# xvfb is here for a carrier, not for convenience.
+#
+# Anthem's broker portal serves `Access Denied` to HEADLESS Chromium and loads
+# normally headed - bot protection, not a bug. So the one automation that has to
+# run unattended is also the one that cannot run headless, and a container has
+# no display. xvfb gives it a virtual one, which is what makes the Ubuntu
+# runtime possible at all. See entrypoint.sh, which starts it only when a run
+# actually asks for a headed browser.
+#
+# libnss3-tools is for the certutil call below.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends libnss3-tools \
+ && apt-get install -y --no-install-recommends libnss3-tools xvfb \
  && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /home/pwuser/.pki/nssdb \
