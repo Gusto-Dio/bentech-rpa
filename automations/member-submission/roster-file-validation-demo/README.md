@@ -7,7 +7,7 @@ launched** - this is the reference implementation for `sessionKind: "none"`.
 |---|---|
 | **Id** | `member-submission/roster-file-validation-demo` |
 | **Domain** | `member-submission` |
-| **Owner** | @gusto/benefits-rpa-member-submission |
+| **Owner** | @gusto/bentech-rpa-member-submission |
 | **Session** | none |
 | **Queue** | `member-submission.roster-file-validation-demo` |
 

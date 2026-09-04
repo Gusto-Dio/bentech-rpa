@@ -3,7 +3,7 @@
   "name": "Carrier Portal Submission (demo)",
   "description": "Reference automation: signs in to a carrier portal, assembles a group submission, reviews the quote and submits it.",
   "domain": "group-submission",
-  "owners": ["@gusto/benefits-rpa-group-submission"],
+  "owners": ["@gusto/bentech-rpa-group-submission"],
   "criticality": "low",
   "sessionKind": "browser",
   "entry": "src/index.ts",

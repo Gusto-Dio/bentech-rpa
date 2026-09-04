@@ -3,7 +3,7 @@
 Process-type domain: automations that validate and submit **individual member**
 elections and eligibility changes.
 
-- **Owner:** @gusto/benefits-rpa-member-submission
+- **Owner:** @gusto/bentech-rpa-member-submission
 - **Shared code:** [`_shared/`](./_shared) is `@auto/member-submission-shared` -
   a delimited-file parser and the domain's eligibility rules. Only automations in
   this domain may import it.
@@ -27,7 +27,7 @@ dates of birth, SSNs or wages. See
 ```bash
 pnpm rpa new automation \
   --id member-submission/<name> \
-  --owner @gusto/benefits-rpa-member-submission \
+  --owner @gusto/bentech-rpa-member-submission \
   --kind api
 pnpm install && pnpm rpa validate
 ```

@@ -8,7 +8,7 @@ docker compose run --rm rpa <automation-id>        # as the servers do
 docker run --rm --shm-size=1g \
   -e APP_ENV=prod -e AUTOMATION_ID=<id> \
   -v "$PWD/data:/app/data" -v "$PWD/artifacts:/app/artifacts" \
-  benefits-rpa:1.0.0
+  bentech-rpa:1.0.0
 ```
 
 ## Exit codes — the contract with whatever schedules this
@@ -160,12 +160,12 @@ Three separate trust stores are involved, and this is where the time goes:
 
 ```bash
 # 1. openssl / curl - the system store
-docker run --rm --entrypoint bash benefits-rpa:local -c \
+docker run --rm --entrypoint bash bentech-rpa:local -c \
   "echo | openssl s_client -connect <host>:443 -servername <host> 2>/dev/null | grep 'Verify return'"
 
 # 2. Node's HTTPS client - its own bundled list, hence NODE_EXTRA_CA_CERTS
 # 3. Chromium - NSS, NOT /etc/ssl/certs
-docker run --rm --entrypoint bash benefits-rpa:local -c \
+docker run --rm --entrypoint bash bentech-rpa:local -c \
   "certutil -d sql:\$HOME/.pki/nssdb -L"
 ```
 

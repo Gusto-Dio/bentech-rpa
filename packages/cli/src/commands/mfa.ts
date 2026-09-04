@@ -3,7 +3,9 @@ import path from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import {
   GmailUiMfaProvider,
+  ImapMfaProvider,
   PlaywrightGmailUiPage,
+  SecretResolver,
   parseAccountFromTitle,
   createLogger,
   findAutomation,
@@ -42,6 +44,7 @@ export async function mfaCommand(args: ParsedArgs): Promise<number> {
   if (sub === 'probe') return probeCode(args);
 
   errorLine('Usage: rpa mfa check --label "<gmail label>" [--automation <id>] [--days 7]');
+  errorLine('       (works for gmail-cdp, gmail-profile and imap)');
   errorLine('       rpa mfa probe --label "<l>" --from "a,b"  read one real code end to end (CONSUMES it)');
   errorLine('       rpa mfa chrome                      print how to start Chrome for gmail-cdp');
   errorLine('       rpa mfa seed-profile [--account <email>] [--automation <id>]');
@@ -123,6 +126,104 @@ async function printChromeCommand(args: ParsedArgs): Promise<number> {
  * wrong value rejects every real code. This is how you set it from evidence
  * instead of guessing.
  */
+/**
+ * `rpa mfa check` for the `imap` provider.
+ *
+ * Runs the REAL provider's own `search`, so this cannot drift from what a run
+ * sees. Reports counts, senders and the newest date - never a subject, a body
+ * or a code, and only the LENGTH of any digit run, exactly as the Gmail
+ * diagnosis does.
+ */
+/**
+ * How many messages `rpa mfa check` pulls, far above the provider's polling cap.
+ *
+ * One constant because the "(capped)" label compares against it: two literals
+ * meant that raising the cap would silently make the display lie.
+ */
+const CHECK_MAX_CANDIDATES = 400;
+
+async function checkOverImap(config: MfaConfig, label: string, days: number): Promise<number> {
+  line(`  host     : ${config.imap.host}:${config.imap.port}`);
+  line(
+    `  auth     : ${
+      config.imap.accessTokenEnv === undefined
+        ? `app password from ${String(config.imap.passwordEnv)}`
+        : `XOAUTH2 from ${config.imap.accessTokenEnv}`
+    }`,
+  );
+  line();
+
+  const logger = createLogger({ level: 'warn', pretty: false, base: {} });
+  const provider = new ImapMfaProvider({
+    config: config.imap,
+    secrets: new SecretResolver(),
+    logger,
+    pollIntervalMs: 5_000,
+    /**
+     * Far above the provider's polling cap on purpose. A run wants ONE recent
+     * code and must not drag hundreds of bodies every five seconds; this command
+     * runs once and its whole job is to show WHO sends to the label, which a
+     * cap of 25 hides on a busy mailbox - measured, it dropped
+     * noreply@broker.anthem.com from the report entirely.
+     */
+    maxCandidates: CHECK_MAX_CANDIDATES,
+  });
+
+  try {
+    const messages = await provider.search({
+      since: new Date(Date.now() - days * 86_400_000),
+      timeoutMs: 30_000,
+      purpose: 'mfa check',
+      matcher: {
+        label,
+        // search() does not filter on these; selectCode does. Kept permissive
+        // so this reports what is THERE rather than what would be accepted.
+        fromAllowList: [],
+        codePattern: /\b(\d{6})\b/,
+      },
+    });
+
+    if (messages.length === 0) {
+      line(style.yellow(`  No mail in "${label}" within the last ${days} day(s).`));
+      line(style.dim('  An empty label and the wrong mailbox look identical from here.'));
+      line(style.dim('  In Gmail the label IS the mailbox path - it must match exactly.'));
+      return 1;
+    }
+
+    const senders = new Map<string, { messages: number; withCode: number }>();
+    for (const message of messages) {
+      const address = /<([^>]+)>/.exec(message.from)?.[1] ?? message.from;
+      const entry = senders.get(address) ?? { messages: 0, withCode: 0 };
+      entry.messages += 1;
+      if (/\b\d{6}\b/.test(message.text)) entry.withCode += 1;
+      senders.set(address, entry);
+    }
+
+    line(
+      `  messages : ${messages.length}${
+        messages.length >= CHECK_MAX_CANDIDATES ? style.dim(' (capped)') : ''
+      }`,
+    );
+    line();
+    line('  Senders in this label');
+    line(style.dim('    address                                                  msgs   with a 6-digit code'));
+    for (const [address, entry] of senders) {
+      line(`    ${address.padEnd(56)} ${String(entry.messages).padEnd(6)} ${entry.withCode}`);
+    }
+    line();
+    line(style.dim('    Put only the senders that actually carry codes on mfaSenderAllowList.'));
+    line();
+    line(`  newest   : ${messages[0]?.receivedAt.toISOString() ?? '(unknown)'}`);
+    return 0;
+  } catch (cause) {
+    line();
+    errorLine(style.red(cause instanceof Error ? cause.message : String(cause)));
+    return 1;
+  } finally {
+    await provider.close();
+  }
+}
+
 async function checkMailbox(args: ParsedArgs): Promise<number> {
   const { config, repoRoot } = await resolveMfa(args);
   const label = flagString(args, 'label') ?? process.env['GMAIL_MFA_LABEL'];
@@ -132,13 +233,25 @@ async function checkMailbox(args: ParsedArgs): Promise<number> {
   line(`  provider : ${config.provider}`);
   line(`  label    : ${label ?? style.dim('(none given)')}`);
 
+  if (label === undefined || label.length === 0) {
+    errorLine(style.red('No label to check. Pass --label "<name>", or set GMAIL_MFA_LABEL in .env.'));
+    return 2;
+  }
+
+  /**
+   * IMAP takes a different route entirely: no browser, no label VIEW, just
+   * SELECT on the label. Handled first so the Gmail-UI plumbing below is not
+   * asked to describe a provider that has none of it.
+   */
+  if (config.provider === 'imap') return checkOverImap(config, label, days);
+
   const mode = modeFor(config, repoRoot);
   if (mode === undefined) {
     line();
     errorLine(
       style.red(
         `mfa.provider is "${config.provider}", which reads no mailbox. ` +
-          'Set it to "gmail-cdp" or "gmail-profile" to use this command.',
+          'Set it to "gmail-cdp", "gmail-profile" or "imap" to use this command.',
       ),
     );
     return 2;
@@ -146,11 +259,6 @@ async function checkMailbox(args: ParsedArgs): Promise<number> {
 
   line(`  source   : ${mode.kind === 'cdp' ? mode.endpoint : mode.userDataDir}`);
   line();
-
-  if (label === undefined || label.length === 0) {
-    errorLine(style.red('No label to check. Pass --label "<name>", or set GMAIL_MFA_LABEL in .env.'));
-    return 2;
-  }
 
   /**
    * Reads the LABEL VIEW, exactly as the provider does. The `--days` window is

@@ -1,4 +1,15 @@
-# benefits-rpa
+# bentech-rpa
+
+> **This repo is a proof of concept. It is not intended to go to production.**
+> It exists to prove one thing: that carrier-portal work can run unattended with
+> the resilience contract we relied on in UiPath's REFramework. "Working and
+> verified end to end" in the table below means verified *as a PoC* — nothing
+> here is approved to carry production workloads, and taking any of it further
+> requires a deliberate hardening and security review first.
+>
+> Note the distinction, because the word does double duty here: the repo is not
+> production, but the carrier *portals* the PoCs drive are real production
+> portals with no sandbox. That is exactly why `allowSubmit` stays `false`.
 
 An RPA platform for **unattended process automation** on Playwright + TypeScript,
 built to carry over the resilience contract we relied on in UiPath's REFramework:
@@ -157,7 +168,7 @@ docker compose run --rm rpa group-submission/carrier-portal-submission-demo
 
 # Build for the server explicitly. On Apple Silicon this cross-builds (slowly),
 # which is the price of not shipping an arm64 image to an x86_64 host.
-docker buildx build --platform linux/amd64 -f tooling/docker/Dockerfile -t benefits-rpa:1.0.0 .
+docker buildx build --platform linux/amd64 -f tooling/docker/Dockerfile -t bentech-rpa:1.0.0 .
 ```
 
 The image is `mcr.microsoft.com/playwright:v1.62.1-jammy` — Ubuntu 22.04 with
@@ -204,7 +215,7 @@ docs/                architecture, authoring, UiPath migration, Orchestrator, op
 ```bash
 pnpm rpa new automation \
   --id group-submission/carrier-eligibility-sync \
-  --owner @gusto/benefits-rpa-group-submission \
+  --owner @gusto/bentech-rpa-group-submission \
   --kind browser          # or: --kind api  (no browser at all)
 
 pnpm install && pnpm rpa validate
@@ -615,7 +626,7 @@ Honest list, so nobody discovers these the hard way.
 
 ## Documentation
 
-- [CLAUDE.md](CLAUDE.md) — working agreement for AI agents in this repo: the
+- [AGENTS.md](AGENTS.md) — working agreement for AI agents in this repo: the
   non-negotiable rules, repo-specific conventions, and the gotchas that have
   already cost debugging time. Useful for humans onboarding too.
 - [docs/architecture.md](docs/architecture.md) — why the repo is shaped this way,

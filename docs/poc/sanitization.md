@@ -98,7 +98,7 @@ That is a control which depends on nobody forgetting, and it had already been
 forgotten once, spreading the values across seven files.
 
 So the Anthem four took the route the portal credentials already take, which is
-the seam CLAUDE.md rule 3 describes: **config holds the name of an environment
+the seam AGENTS.md rule 3 describes: **config holds the name of an environment
 variable, `.env` holds the value.** `resolveProducerIdentity()` reads them
 through `ctx.secrets` at the start of each transaction, and a missing one is a
 `SystemException` at that point rather than a mystery failure on the

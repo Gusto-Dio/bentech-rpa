@@ -13,7 +13,7 @@ Two real benefits processes, automated against live carrier portals.
 The MFA providers, `step()` and session reuse all exist and are proven against
 the live Anthem portal: a real code read from a Gmail label, login completed,
 `data/sessions/anthem-ca.json` persisted, and a recovered session consuming no
-code. Read [mfa-gmail.md](mfa-gmail.md) and CLAUDE.md rule 10b before touching
+code. Read [mfa-gmail.md](mfa-gmail.md) and AGENTS.md rule 10b before touching
 that layer - several "safety" guards added there discarded valid codes.
 Both PoCs depend on the same MFA module, `step()` helper and session reuse.
 Building them twice would produce two divergent versions.

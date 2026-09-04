@@ -33,7 +33,7 @@ data/queue.*.json.tmp
 .tmp/
 
 # SUPERVISED live-fire drivers. Each one hardcodes `allowSubmit: true` to get
-# past the guard in CLAUDE.md rule 10, against Anthem's PRODUCTION portal - so
+# past the guard in AGENTS.md rule 10, against Anthem's PRODUCTION portal - so
 # running one can SIGN AND FILE a real group application under a real
 # producer's licence. They are hand-run reconnaissance tools, labelled "Not
 # shipped" in their own headers, and nothing that can file an application

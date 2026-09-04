@@ -1,10 +1,15 @@
-# CLAUDE.md
+# AGENTS.md
 
 Guidance for AI agents working in this repository. Read this before making
 changes; it encodes decisions that are easy to violate accidentally and
 gotchas that have already cost real debugging time.
 
 ## What this repo is
+
+**A proof of concept. It is not intended to go to production.** Nothing here is
+approved to carry production workloads, so do not describe it as production-ready
+or relax a guard on the grounds that it is "only a PoC" — the carrier portals it
+drives are real production portals, which is what rule 10 is about.
 
 An RPA platform for **unattended process automation** on Playwright +
 TypeScript, reproducing the resilience contract of UiPath's REFramework. It is

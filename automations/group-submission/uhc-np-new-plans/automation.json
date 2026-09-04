@@ -4,7 +4,7 @@
   "description": "Submits a new-plan group application to the UHC SAMx portal",
   "domain": "group-submission",
   "owners": [
-    "@gusto/benefits-rpa-group-submission"
+    "@gusto/bentech-rpa-group-submission"
   ],
   "criticality": "high",
   "sessionKind": "browser",

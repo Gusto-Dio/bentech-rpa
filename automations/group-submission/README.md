@@ -3,7 +3,7 @@
 Process-type domain: automations that assemble and submit a **group's** benefits
 elections to a carrier portal.
 
-- **Owner:** @gusto/benefits-rpa-group-submission
+- **Owner:** @gusto/bentech-rpa-group-submission
 - **Shared code:** [`_shared/`](./_shared) is `@auto/group-submission-shared` -
   the carrier portal sign-in page object and the domain's business rules. Only
   automations in this domain may import it.
@@ -19,7 +19,7 @@ elections to a carrier portal.
 ```bash
 pnpm rpa new automation \
   --id group-submission/<name> \
-  --owner @gusto/benefits-rpa-group-submission \
+  --owner @gusto/bentech-rpa-group-submission \
   --kind browser
 pnpm install && pnpm rpa validate
 ```

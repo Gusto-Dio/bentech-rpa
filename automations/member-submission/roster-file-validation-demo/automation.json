@@ -3,7 +3,7 @@
   "name": "Roster File Validation (demo)",
   "description": "Validates member elections against the carrier plan catalog. No browser: file and rule work only.",
   "domain": "member-submission",
-  "owners": ["@gusto/benefits-rpa-member-submission"],
+  "owners": ["@gusto/bentech-rpa-member-submission"],
   "criticality": "low",
   "sessionKind": "none",
   "entry": "src/index.ts",

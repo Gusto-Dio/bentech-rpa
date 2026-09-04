@@ -6,7 +6,7 @@
 pnpm rpa new automation \
   --id group-submission/carrier-eligibility-sync \
   --title "Carrier Eligibility Sync" \
-  --owner @gusto/benefits-rpa-group-submission \
+  --owner @gusto/bentech-rpa-group-submission \
   --kind browser        # or --kind api for no browser at all
 
 pnpm install

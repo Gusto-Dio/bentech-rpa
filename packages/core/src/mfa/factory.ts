@@ -4,6 +4,7 @@ import type { MfaConfig } from '../config/schema.ts';
 import type { SecretResolver } from '../secrets.ts';
 import { GmailApiMfaProvider } from './GmailApiMfaProvider.ts';
 import { GmailUiMfaProvider } from './GmailUiMfaProvider.ts';
+import { ImapMfaProvider } from './ImapMfaProvider.ts';
 import { ManualMfaProvider } from './ManualMfaProvider.ts';
 import type { MfaCodeProvider } from './MfaCodeProvider.ts';
 
@@ -60,6 +61,15 @@ export function createMfaProvider(options: CreateMfaProviderOptions): MfaCodePro
     case 'gmail-api':
       return new GmailApiMfaProvider({
         config: config.gmail,
+        secrets,
+        logger,
+        pollIntervalMs: config.pollIntervalMs,
+        ...signal,
+      });
+
+    case 'imap':
+      return new ImapMfaProvider({
+        config: config.imap,
         secrets,
         logger,
         pollIntervalMs: config.pollIntervalMs,

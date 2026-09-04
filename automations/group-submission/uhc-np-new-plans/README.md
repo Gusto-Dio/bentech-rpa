@@ -8,7 +8,7 @@ application.
 |---|---|
 | **Id** | `group-submission/uhc-np-new-plans` |
 | **Domain** | `group-submission` |
-| **Owner** | @gusto/benefits-rpa-group-submission |
+| **Owner** | @gusto/bentech-rpa-group-submission |
 | **Session** | browser (Chromium, headless by default) + **MFA** |
 | **Queue** | `group-submission.uhc-np-new-plans` (local JSON in phase 1) |
 | **Status** | **Stages 1–2 wired, 3–8 mapped and not implemented** |

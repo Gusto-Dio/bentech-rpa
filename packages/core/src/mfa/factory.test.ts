@@ -6,6 +6,7 @@ import { createLogger } from '../logger.ts';
 import { EnvSecretProvider, SecretResolver } from '../secrets.ts';
 import { GmailApiMfaProvider } from './GmailApiMfaProvider.ts';
 import { GmailUiMfaProvider } from './GmailUiMfaProvider.ts';
+import { ImapMfaProvider } from './ImapMfaProvider.ts';
 import { ManualMfaProvider } from './ManualMfaProvider.ts';
 import { createMfaProvider } from './factory.ts';
 
@@ -38,10 +39,20 @@ describe('createMfaProvider', () => {
     assert.ok(build({ provider: 'gmail-api' }) instanceof GmailApiMfaProvider);
   });
 
+  /**
+   * The `imap` branch was the only one in the enum with no coverage here, so a
+   * broken wiring - wrong config subtree, wrong provider returned - would have
+   * surfaced only when a real run tried to read a mailbox.
+   */
+  it('builds the IMAP provider', () => {
+    assert.ok(build({ provider: 'imap' }) instanceof ImapMfaProvider);
+  });
+
   it('reports the provider it built, which is the field to look for in a run log', () => {
     assert.equal(build({ provider: 'gmail-cdp' }).name, 'gmail-cdp');
     assert.equal(build({ provider: 'gmail-profile' }).name, 'gmail-profile');
     assert.equal(build({ provider: 'gmail-api' }).name, 'gmail-api');
+    assert.equal(build({ provider: 'imap' }).name, 'imap');
   });
 
   it('never touches a browser or the network just by being constructed', () => {
@@ -50,6 +61,7 @@ describe('createMfaProvider', () => {
     assert.doesNotThrow(() => build({ provider: 'gmail-cdp' }));
     assert.doesNotThrow(() => build({ provider: 'gmail-profile' }));
     assert.doesNotThrow(() => build({ provider: 'gmail-api' }));
+    assert.doesNotThrow(() => build({ provider: 'imap' }));
   });
 
   it('resolves profileDir against the repo root, the way dataDir is resolved', () => {

@@ -63,6 +63,15 @@ export {
   type GmailApiMfaProviderOptions,
 } from './mfa/GmailApiMfaProvider.ts';
 export {
+  ImapMfaProvider,
+  type ImapCredentials,
+  type ImapFetchedMessage,
+  type ImapMfaProviderOptions,
+  type ImapRange,
+  type ImapSearchObject,
+  type ImapSession,
+} from './mfa/ImapMfaProvider.ts';
+export {
   GmailUiMfaProvider,
   PlaywrightGmailUiPage,
   parseAccountFromTitle,
@@ -174,6 +183,7 @@ export {
   DEFAULT_PLATFORM_CONFIG,
   browserConfigSchema,
   gmailApiConfigSchema,
+  imapConfigSchema,
   logLevelSchema,
   mfaConfigSchema,
   orchestratorConfigSchema,
@@ -181,6 +191,7 @@ export {
   queueConfigSchema,
   type BrowserConfig,
   type GmailApiConfig,
+  type ImapConfig,
   type LogLevel,
   type MfaConfig,
   type OrchestratorConfig,
