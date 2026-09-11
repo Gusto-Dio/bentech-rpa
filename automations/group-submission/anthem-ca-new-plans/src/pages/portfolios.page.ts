@@ -13,7 +13,7 @@ import {
   type as typeInto,
   typeahead,
   field,
-} from './lightning.ts';
+} from '@auto/group-submission-shared';
 import { readPortalValidationError } from './portal-errors.ts';
 
 /**

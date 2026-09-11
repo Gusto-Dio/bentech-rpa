@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Page } from 'playwright';
 import type { Payload } from '../payload.ts';
-import { DOCUMENT_TIMEOUT_MS, button } from './lightning.ts';
+import { DOCUMENT_TIMEOUT_MS, button } from '@auto/group-submission-shared';
 import { readApplicationMatchingError } from './portal-errors.ts';
 
 /**

@@ -2,15 +2,24 @@ import { visible } from '@rpa/core';
 import type { Locator, Page } from 'playwright';
 
 /**
- * Interacting with Anthem's Salesforce / Vlocity quoting platform.
+ * Interacting with a Salesforce Lightning / Vlocity OmniScript portal.
  *
  * Everything in this file exists because a plain Playwright locator does the
  * wrong thing on this platform. Each helper encodes one behaviour that was
- * discovered the expensive way against the live portal on 2026-09-03 - all of
- * them are written up in docs/poc/anthem-ca-new-plans/drift-log.md.
+ * discovered the expensive way against the live Anthem portal on 2026-09-03 -
+ * all of them are written up in docs/poc/anthem-ca-new-plans/drift-log.md.
  *
- * Nothing here is Anthem-specific in principle; it is Salesforce Lightning plus
- * Vlocity OmniScript. It stays in this automation until a second one needs it.
+ * ── WHY IT MOVED HERE (2026-09-11) ──────────────────────────────────────────
+ * It used to live in `anthem-ca-new-plans/src/pages/`, with a note saying it
+ * would stay there "until a second one needs it". A second one now does: the
+ * dev-portal automation drives a local replica of the same platform, and rule 4
+ * forbids one automation importing another - so the alternative was a copy, and
+ * a copy would let the two drift apart on exactly the behaviours this file
+ * exists to pin down.
+ *
+ * It is also the fidelity contract for that replica. These helpers, unmodified,
+ * must drive the dummy portal; a helper that needs adapting to work locally
+ * means the replica is wrong, not the helper.
  */
 
 /** Vlocity screens repaint on every answer; a gate has to outlast that. */
