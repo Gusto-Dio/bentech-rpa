@@ -1,0 +1,34 @@
+# Sentinel cadences, for a Linux host. The macOS equivalent is the three
+# plists beside this file.
+#
+# Install with:  crontab tooling/sentinel/crontab.example   (edit the paths first)
+
+# cron's PATH is minimal and does not include Docker's binaries. Without this,
+# every job fails with a bare exit 127 and nothing explains why.
+PATH=/usr/local/bin:/usr/bin:/bin
+
+# Non-zero exits are mailed here. Worth setting: exit 1 means a healable finding
+# was filed, exit 2 means a person is needed, and exit 4 means the sentinel
+# could not look at all - which is NOT a portal verdict.
+MAILTO=REPLACE_WITH_YOUR_TEAM_ALIAS
+
+APP_ENV=dev
+
+# ── access: credential-free, no MFA, cheap. The early-warning tripwire. ──
+*/15 * * * *      /srv/bentech-rpa/tooling/sentinel-cron.sh access     >> /srv/bentech-rpa/artifacts/sentinel/cron.log 2>&1
+
+# ── session: cookies only. Decides whether the navigation run can afford to look. ──
+7 * * * *         /srv/bentech-rpa/tooling/sentinel-cron.sh session    >> /srv/bentech-rpa/artifacts/sentinel/cron.log 2>&1
+
+# ── navigation: signs in, may spend ONE code a day. ──
+#
+# At business-hours edges on purpose: a healable issue filed at 17:10 has
+# someone around to read it, and a one-time code that needs a human to forward
+# it has a working mailbox behind it.
+10 7,12,17 * * *  /srv/bentech-rpa/tooling/sentinel-cron.sh navigation >> /srv/bentech-rpa/artifacts/sentinel/cron.log 2>&1
+
+# NOTE: `flock` is deliberately NOT used here, even though this is the Linux
+# file. macOS has neither flock nor setsid, and a lock that exists on only one
+# of the two plausible hosts is worse than one that exists on both - it produces
+# a false sense of exclusion. The portable lock lives in the repo
+# (data/sentinel/portal.lock) and both schedulers get it for free.

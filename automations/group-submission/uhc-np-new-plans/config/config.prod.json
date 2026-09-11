@@ -1,21 +1,22 @@
 {
-  "$comment": "Layer 4: UHC SAMx settings. Credentials are env-var NAMES only. The REPLACE_ME values were removed during sanitization - get them from the Benefits runbook. See docs/poc/sanitization.md.",
+  "$comment": "Layer 4: UHC SAMx settings. Credentials are env-var NAMES only. Producer and general-agent identity are env-var NAMES, resolved through ctx.secrets. See docs/poc/sanitization.md.",
   "automation": {
-    "portalUrl": "https://www.uhc.com/employer/",
+    "portalUrl": "https://www.uhceservices.com/en/prelogin",
 
     "usernameEnv": "UHC_PORTAL_USERNAME",
     "passwordEnv": "UHC_PORTAL_PASSWORD",
 
-    "producerFirstName": "REPLACE_ME",
-    "producerLastName": "REPLACE_ME",
+    "$comment_identity": "Env-var NAMES, never values. A real licensed producer and agency; see docs/poc/sanitization.md.",
+    "producerFirstNameEnv": "UHC_PRODUCER_FIRST_NAME",
+    "producerLastNameEnv": "UHC_PRODUCER_LAST_NAME",
 
-    "generalAgentName": "REPLACE_ME",
-    "generalAgentFranchiseCode": "REPLACE_ME",
-    "generalAgentEmail": "REPLACE_ME",
-    "pcisId": "REPLACE_ME",
+    "generalAgentNameEnv": "UHC_GENERAL_AGENT_NAME",
+    "generalAgentFranchiseCodeEnv": "UHC_GENERAL_AGENT_FRANCHISE_CODE",
+    "generalAgentEmailEnv": "UHC_GENERAL_AGENT_EMAIL",
+    "pcisIdEnv": "UHC_PCIS_ID",
+    "dummyPcpCodeEnv": "UHC_DUMMY_PCP_CODE",
+
     "commissionPercentage": 100,
-
-    "dummyPcpCode": "REPLACE_ME",
 
     "mfaLabel": "Access Token (UnitedHealthcare)",
     "mfaSenderAllowList": ["txt.voice.google.com", "carrierops@gusto.com"],

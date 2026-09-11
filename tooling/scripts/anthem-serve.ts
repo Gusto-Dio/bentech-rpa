@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { findRepoRoot } from '@rpa/core';
 import { chromium, type Browser } from 'playwright';
+import { PORTAL_HOST } from '../../automations/group-submission/anthem-ca-new-plans/src/pages/portal-origins.ts';
 
 /**
  * Holds ONE signed-in Anthem browser open, for the whole re-mapping session.
@@ -24,7 +25,16 @@ import { chromium, type Browser } from 'playwright';
  * a signature while mapping.
  */
 
-const DEFAULT_URL = 'https://brokerportal.anthem.com/apps/ptb/';
+/**
+ * Fixed, and deliberately not overridable from argv.
+ *
+ * This process restores `data/sessions/anthem-ca.json` into a headed Chromium
+ * and exposes it on a debugging port, so whatever URL it opens is loaded with a
+ * live production broker session attached. A URL argument made that an egress
+ * path for anything able to spawn the script. Navigation is the harness's job
+ * and `anthem-do.ts "u <url>"` is fenced to `RECON_HOSTS`.
+ */
+const START_URL = `https://${PORTAL_HOST}/apps/ptb/`;
 
 /** Anthem serves `Access Denied` to headless Chromium. Bot protection, not a bug. */
 const HEADLESS = false;
@@ -35,7 +45,6 @@ export const CDP_PORT = 9222;
 async function main(): Promise<void> {
   const repoRoot = findRepoRoot();
   const statePath = path.join(repoRoot, 'data', 'sessions', 'anthem-ca.json');
-  const url = process.argv[2] ?? DEFAULT_URL;
 
   /**
    * Read and parsed rather than handed over as a path, so a missing session
@@ -57,7 +66,7 @@ async function main(): Promise<void> {
 
   const context = await browser.newContext({ storageState, viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
-  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await page.goto(START_URL, { waitUntil: 'domcontentloaded' });
 
   console.log(`Anthem recon browser is up on CDP port ${CDP_PORT}.`);
   console.log(`   at: ${page.url()}`);

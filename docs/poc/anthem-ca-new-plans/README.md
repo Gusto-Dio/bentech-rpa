@@ -2,7 +2,6 @@
 
 | Document | What it is for |
 |---|---|
-| [PROMPT.md](PROMPT.md) | **The development prompt.** Paste into a fresh session |
 | [process-steps.md](process-steps.md) | The sanitized runbook, stage-numbered to match the code |
 | [field-map.md](field-map.md) | Payload field → portal field, per screen |
 | [documents.md](documents.md) | The 8 upload slots and where each document comes from |

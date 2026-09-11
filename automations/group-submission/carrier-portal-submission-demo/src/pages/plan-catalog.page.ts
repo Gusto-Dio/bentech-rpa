@@ -70,8 +70,19 @@ export class PlanCatalogPage {
     return Number((await badge.textContent())?.trim() ?? '0');
   }
 
+  /**
+   * The draft link is a NAVIGATION, and the caller counts lines the moment this
+   * resolves. `count()` is one of Playwright's non-waiting calls - the same trap
+   * `gates.ts` documents for `isVisible()` - so the wait is what lets
+   * `SubmissionReviewPage.lineCount()` be a plain count instead of a gate.
+   *
+   * Without it the count can land on the catalogue, where the Remove controls
+   * of already-added plans are also present - so it would answer plausibly and
+   * wrongly rather than fail. Do not remove the wait.
+   */
   async openDraftSubmission(): Promise<void> {
     await this.#page.locator('[data-test="shopping-cart-link"], .shopping_cart_link').click();
+    await this.#page.waitForURL(/cart\.html/);
   }
 
   #planCard(planName: string): Locator {

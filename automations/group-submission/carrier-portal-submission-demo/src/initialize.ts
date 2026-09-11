@@ -14,7 +14,8 @@ import type { AutomationConfig } from './config.ts';
 export async function initialize(ctx: WebInitContext<AutomationConfig>): Promise<void> {
   const { portalUrl, usernameEnv, passwordEnv } = ctx.config.automation;
 
-  // Credentials come from the secret provider (env today, a vault later), so a
+  // Credentials come from the secret provider (env today, a managed secret
+  // store later), so a
   // missing one is a SystemException that aborts before any group is touched.
   const username = await ctx.secrets.require(usernameEnv);
   const password = await ctx.secrets.require(passwordEnv);

@@ -3,7 +3,8 @@
   "include": [
     "packages/*/src/**/*.ts",
     "automations/*/*/src/**/*.ts",
-    "tooling/scripts/**/*.ts"
+    "tooling/scripts/**/*.ts",
+    "tooling/healing/**/*.ts"
   ],
   "exclude": [
     "node_modules",

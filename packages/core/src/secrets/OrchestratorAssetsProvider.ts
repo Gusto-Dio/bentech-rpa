@@ -11,8 +11,8 @@ import type { Credential, SecretProvider } from '../secrets.ts';
  *
  * For genuinely sensitive values, a dedicated secrets manager remains the
  * recommendation, for the reason spelled out on getCredential() below. The
- * SecretProvider interface exists precisely so that swapping this for a Vault
- * or AWS Secrets Manager adapter touches one class and no automation.
+ * SecretProvider interface exists precisely so that swapping this for an AWS
+ * Secrets Manager adapter touches one class and no automation.
  */
 
 interface AssetDto {

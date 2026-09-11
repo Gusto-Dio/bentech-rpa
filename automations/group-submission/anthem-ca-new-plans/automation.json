@@ -13,12 +13,15 @@
     "name": "group-submission.anthem-ca-new-plans",
     "maxRetries": 1
   },
+  "$comment": "PoC, phase 1: local JSON queue, local credentials, no Orchestrator. maxRetries is 1 because a retry re-drives a partially-filled portal application - the step() resume path makes that safe, but it is not free.",
+  "sentinel": {
+    "probes": "src/sentinel/probes.ts"
+  },
   "tags": [
     "poc",
     "carrier-portal",
     "anthem",
     "mfa",
     "phase-1"
-  ],
-  "$comment": "PoC, phase 1: local JSON queue, local credentials, no Orchestrator. maxRetries is 1 because a retry re-drives a partially-filled portal application - the step() resume path makes that safe, but it is not free."
+  ]
 }

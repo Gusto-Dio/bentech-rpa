@@ -12,6 +12,7 @@ import { chromium, type Page } from 'playwright';
 import { automationConfigSchema } from '../../automations/group-submission/anthem-ca-new-plans/src/config.ts';
 import { AnthemLoginPage } from '../../automations/group-submission/anthem-ca-new-plans/src/pages/login.page.ts';
 import { createAnthemSession } from '../../automations/group-submission/anthem-ca-new-plans/src/session.ts';
+import { PLATFORM_HOST } from '../../automations/group-submission/anthem-ca-new-plans/src/pages/portal-origins.ts';
 
 /**
  * Signs in to Anthem and proves we can reach the quoting platform. Creates nothing.
@@ -45,8 +46,6 @@ import { createAnthemSession } from '../../automations/group-submission/anthem-c
 
 /** The launchpad tile that performs the SSO hand-off without creating anything. */
 const LAUNCHPAD_TILE = 'Small Group Quote & Enroll';
-
-const PLATFORM_HOST = 'elevancehealthfulcrum.my.site.com';
 
 async function main(): Promise<void> {
   const repoRoot = findRepoRoot();

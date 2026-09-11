@@ -261,13 +261,151 @@ browser, and it is worth saying so before a run finds out.
   against the local JSON queue will fight. Parallelism needs the Orchestrator
   backend, which is unit-tested but never validated against a live tenant.
 
-## Scheduling (not built yet)
+## Scheduling automations (still not built)
 
-`automation.json` already declares `schedule.cron` and `schedule.timezone`;
-nothing reads them at runtime. Until an orchestrator exists, one Kubernetes
-`CronJob` (or one cron line) per automation, using the manifest's schedule as
-the source of truth:
+`automation.json` declares `schedule.cron` and `schedule.timezone`; nothing
+reads them at runtime. Until an orchestrator exists, one Kubernetes `CronJob`
+(or one cron line) per automation, using the manifest's schedule as the source
+of truth:
 
 ```bash
 pnpm rpa list --json | jq -r '.automations[] | select(.schedule) | "\(.schedule.cron)  \(.id)"'
 ```
+
+The sentinel below has its own scheduler and deliberately does **not** use that
+block — see AGENTS.md's amended "Deliberately absent" entry. It never runs an
+automation, which is the point.
+
+## The portal sentinel
+
+`rpa sentinel` watches a carrier portal for two different things:
+
+- **failure** — a probe could not do what it set out to do;
+- **drift** — a probe succeeded, but the screen is not the screen we recorded.
+
+Drift is the half that pays for the arrangement: a field renamed today breaks a
+run next week, and catching it while the probe still passes is the difference
+between a scheduled fix and an incident.
+
+### The probes, and what each costs
+
+| Probe | Credentials | MFA | Answers |
+|---|---|---|---|
+| `anthem-ca/portal-access` | none | never | does the carrier serve a login page to this runtime, headed, through the corporate CA? |
+| `anthem-ca/portal-session` | cookies only | never | is the stored session still accepted? This is the input to every MFA decision |
+| `anthem-ca/portal-navigation` | yes | ≤1/day | does sign-in work, and does the SAML hop reach the quoting platform? |
+
+`portal-navigation` uses the `Small Group Quote & Enroll` launchpad tile, which
+performs the same SAML hand-off as `Create Quote` but lands on the platform home
+— verified to create no account, no quote and no application. `Create Quote` is
+the step that starts writing and is deliberately never touched.
+
+### Running it by hand
+
+```bash
+pnpm rpa sentinel --list
+pnpm rpa sentinel anthem-ca/portal-access          # dry run is the DEFAULT
+pnpm rpa sentinel --set access --file-issues       # actually file
+pnpm rpa sentinel anthem-ca/portal-access --bless --note "first baseline, headed, container"
+```
+
+The positional argument is a **probe id, never an automation id** —
+`rpa sentinel group-submission/anthem-ca-new-plans` does not resolve, and says
+why. That is one keystroke from the forbidden `rpa run …`.
+
+### Exit codes
+
+Its own taxonomy, and a scheduler should not treat every non-zero the same:
+
+| Code | Means |
+|---|---|
+| `0` | every probe passed and every screen matched its baseline |
+| `1` | a probe failed, and triage says our code is the likely cause |
+| `2` | a probe failed for a reason healing cannot fix — infra, or a person is needed |
+| `3` | everything passed, but a screen moved. Nothing is broken yet |
+| `4` | **the sentinel could not look** — the lock was held, the MFA budget was spent, config was invalid. NOT a portal verdict |
+| `5` | the kill switch is on |
+
+`4` is distinct from `1` deliberately: "we could not look" reported as "the
+portal is broken" is how a monitor loses its audience. `5` is distinct from `4`
+because a monitor must let you tell *off* from *wedged*.
+
+### On the internal host
+
+```bash
+tooling/sentinel-cron.sh access       # every ~15 min
+tooling/sentinel-cron.sh session      # hourly
+tooling/sentinel-cron.sh navigation   # 07:10, 12:10, 17:10
+```
+
+macOS: the three plists in `tooling/sentinel/`. Linux:
+`tooling/sentinel/crontab.example`. Two traps, both of which produce a silent
+failure:
+
+- **launchd's `PATH` is minimal and excludes Docker's binaries.** The job dies
+  with a bare exit 127. Both the plists and the crontab set `PATH` explicitly.
+- **Overriding the container entrypoint without naming `with-display.sh` loses
+  the virtual display**, and the probe then reports the exact bot-block it
+  exists to rule out.
+
+`flock` is deliberately unused even on Linux: macOS has neither `flock` nor
+`setsid`, and a lock present on only one of the two plausible hosts is worse
+than one present on both. The portable lock is `data/sentinel/portal.lock`.
+
+### MFA economics
+
+A one-time code takes a measured **132–600s** to arrive through the forward,
+expires on a countdown, and is delivered primarily to a mailbox we cannot read.
+So the sentinel spends one only on a **proven** lapse, at most
+`sentinel.maxMfaPerDay` per day.
+
+A SAML re-challenge costs the **password only** — Okta does not ask for a
+factor, because the device is trusted — so it is tracked separately and does not
+count against the budget. The navigation probe's own `saveSession` keeps the
+portal session warm, which means running the sentinel *reduces* net MFA spend
+rather than adding to it.
+
+### Calibrating it
+
+Every threshold in `config/platform.json` under `sentinel` is judgement rather
+than measurement. Run the first fortnight with `fileIssues: false` and read the
+printed findings, then set `minConsecutiveFailures`, the cooldown and the daily
+cap to what this portal actually does.
+
+`RPA_SENTINEL_ENABLED=false` is the kill switch and overrides config without a
+deploy.
+
+### Log rotation
+
+launchd does not rotate `StandardOutPath`. Add
+`artifacts/sentinel/launchd-*.log` and `artifacts/sentinel/cron.log` to whatever
+rotates logs on the host, or truncate them on a schedule — the access cadence
+writes 96 entries a day.
+
+## Autohealing
+
+When the sentinel files a `sentinel:healable` issue, an unattended repair
+session can pick it up. The full procedure is
+`.claude/skills/portal-drift-repair/SKILL.md`; the operational surface is:
+
+```bash
+pnpm heal:selftest        # proves the guard rails, and runs in milliseconds
+```
+
+Run that **before trusting a heal on this host**, and after any change to
+`tooling/healing/policy.ts`. It answers "is the policy correct?". The supervisor
+separately answers "is the policy in the path?" by watching a throwaway session
+actually get denied — a correct policy that is never consulted is the dangerous
+state, and it looks exactly like a working one.
+
+Operational notes:
+
+- **One heal at a time, in one dedicated clone.** Not a git worktree: `.env`,
+  `data/sessions/`, the Chromium profile and CDP 9222 are repo-root singletons.
+- The repair session runs on the **host**, not in the container — it needs
+  `git`, `gh`, the agent binary and the recon browser.
+- It opens **draft** pull requests and never merges. `main` must be protected
+  with a required CODEOWNERS review; until it is, "never merges" rests on the
+  policy alone.
+- Its transcript is at `artifacts/heal/<issue>/transcript.jsonl`, gitignored and
+  never uploaded.

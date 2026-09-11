@@ -165,8 +165,8 @@ Not in seed files, not in fixtures, not in examples, not in a comment.
   Where a downstream system needs those fields, it looks them up by reference.
 - **No secrets in config.** Config holds the *name* of an environment variable;
   `ctx.secrets.require(name)` resolves the value. That indirection is why no
-  config file in this repo is sensitive, and it is the seam a real vault plugs
-  into.
+  config file in this repo is sensitive, and it is the seam a real secret store
+  plugs into.
 - Logs are redacted on the obvious fields (`REDACT_PATHS` in
   `packages/core/src/logger.ts`), but redaction is a safety net, not a licence.
   If you add a payload field that is sensitive, add its path there — and first

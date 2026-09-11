@@ -77,7 +77,20 @@ export const queueConfigSchema = z.strictObject({
    *           Orchestrator owns locking and Auto-Retry. Needs a robot identity.
    *   odata - plain OData reads for external applications with no robot
    *           identity. Cannot claim an item atomically, so it is
-   *           SINGLE-WORKER ONLY. See docs/orchestrator.md.
+   *           SINGLE-WORKER ONLY.
+   *
+   * Why 'odata' is single-worker only: Orchestrator's public OData surface
+   * exposes no way to transition an item to InProgress. The documented
+   * `PUT /odata/QueueItems({Id})` body carries Name, Priority, SpecificContent,
+   * Reference and Progress - but NOT Status. So there is no atomic claim, and
+   * two workers would pick up the same item.
+   *
+   * What the provider does instead: reads a window of 'New' items ordered by
+   * CreationTime, ranks them by priority in code, keeps an in-process set of
+   * claimed ids, and writes a SetTransactionProgress note so a human can see
+   * the item was picked up. A unique Reference is the backstop. None of that
+   * makes it safe for concurrency - it only makes the single-worker case
+   * observable. Use 'robot' mode if you need parallel workers.
    */
   mode: z.enum(['robot', 'odata']),
 
@@ -276,6 +289,66 @@ export const mfaConfigSchema = z.strictObject({
 });
 export type MfaConfig = z.infer<typeof mfaConfigSchema>;
 
+/**
+ * Portal monitoring. Every knob here is a rate limit or a kill switch.
+ *
+ * ── WHY ALL OF THESE EXIST ──────────────────────────────────────────────────
+ * The access probe runs every fifteen minutes. Without limits, one broken
+ * screen becomes ninety-six GitHub issues a day and the monitor gets muted -
+ * at which point it is worse than not having one, because everyone believes
+ * the portal is being watched.
+ *
+ * The thresholds are judgement rather than measurement, which is precisely why
+ * they are config: the first fortnight should run with `fileIssues: false` to
+ * calibrate them against what this portal actually does.
+ * ───────────────────────────────────────────────────────────────────────────
+ */
+export const sentinelConfigSchema = z.strictObject({
+  /** The kill switch. `RPA_SENTINEL_ENABLED=false` overrides it without a deploy. */
+  enabled: z.boolean(),
+
+  /**
+   * NAME of the environment variable holding the GitHub token, never the value.
+   * Same indirection as every other credential here - see rule 3.
+   */
+  githubTokenEnv: z.string().min(1),
+  repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/, 'must be owner/repo'),
+
+  /**
+   * Filing is OPT-IN. A hand run, and a first container run, print what they
+   * would file and file nothing.
+   */
+  fileIssues: z.boolean(),
+
+  /** One transient 502 must not file anything. */
+  minConsecutiveFailures: z.number().int().min(1),
+  /** Do not comment on the same open issue more often than this. */
+  perFingerprintCooldownMs: z.number().int().min(0),
+  /** A portal-wide outage must not file one issue per fingerprint per probe. */
+  maxNewIssuesPer24h: z.number().int().min(0),
+  /**
+   * The rule-11 analogue. Two open healable issues for one probe means two
+   * repair sessions editing the same page objects.
+   */
+  maxOpenHealableIssuesPerProbe: z.number().int().min(1),
+
+  /**
+   * How many one-time codes the sentinel may spend per day.
+   *
+   * A code takes a measured 132-600s to arrive through the forward, expires on
+   * a countdown, and goes primarily to a mailbox we cannot read. One per day is
+   * enough to prove sign-in still works; more is the monitor competing with the
+   * humans who need those codes.
+   */
+  maxMfaPerDay: z.number().int().min(0),
+
+  /** After this, a portal lock is assumed abandoned and taken over. */
+  lockStaleAfterMs: z.number().int().min(60_000),
+  /** Bounded, so `artifacts/` cannot become an audit store by accident. */
+  evidenceRetentionDays: z.number().int().min(1),
+});
+export type SentinelConfig = z.infer<typeof sentinelConfigSchema>;
+
 const platformConfigObjectSchema = z.strictObject({
   logLevel: logLevelSchema,
   logPretty: z.boolean(),
@@ -306,7 +379,11 @@ const platformConfigObjectSchema = z.strictObject({
   queue: queueConfigSchema,
   /** Required when queue.provider is 'orchestrator'; absent otherwise. */
   orchestrator: orchestratorConfigSchema.optional(),
+
+  /** Portal monitoring. See sentinelConfigSchema. */
+  sentinel: sentinelConfigSchema,
 });
+
 
 /**
  * Cross-field rules. These exist because the individually-valid combinations
@@ -386,6 +463,25 @@ export const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
 
   maxConsecutiveSystemExceptions: 5,
   transactionTimeoutMs: 120_000,
+
+  /**
+   * Deliberately cautious defaults: enabled so the command works, but filing
+   * OFF so switching the schedule on cannot surprise anyone with a hundred
+   * issues before the thresholds have been calibrated.
+   */
+  sentinel: {
+    enabled: true,
+    githubTokenEnv: 'SENTINEL_GITHUB_TOKEN',
+    repo: 'Gusto/bentech-rpa',
+    fileIssues: false,
+    minConsecutiveFailures: 2,
+    perFingerprintCooldownMs: 6 * 60 * 60 * 1_000,
+    maxNewIssuesPer24h: 3,
+    maxOpenHealableIssuesPerProbe: 1,
+    maxMfaPerDay: 1,
+    lockStaleAfterMs: 30 * 60 * 1_000,
+    evidenceRetentionDays: 14,
+  },
 
   browser: {
     headless: true,

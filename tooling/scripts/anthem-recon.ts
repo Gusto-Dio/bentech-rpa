@@ -1,4 +1,5 @@
 import type { Page } from 'playwright';
+import { RECON_HOSTS, isReconOrigin } from '../../automations/group-submission/anthem-ca-new-plans/src/pages/portal-origins.ts';
 
 /**
  * The shared half of the Anthem reconnaissance harness.
@@ -248,7 +249,7 @@ function nth<T extends { nth: (i: number) => T }>(locator: T, input: string): T 
 
 export const COMMANDS = [
   '  <blank>        dump this screen again',
-  '  u <url>        navigate',
+  '  u <url>        navigate (Anthem hosts only)',
   '  c <name>       click the button with that accessible name (name@2 for the 2nd)',
   '  r <role> <nm>  click by role + accessible name',
   '  t <text>       click by visible text, for role-less controls',
@@ -261,7 +262,22 @@ export const COMMANDS = [
 export async function runCommand(page: Page, answer: string): Promise<void> {
   try {
     if (answer.startsWith('u ')) {
-      await page.goto(answer.slice(2).trim(), { waitUntil: 'domcontentloaded' });
+      const target = answer.slice(2).trim();
+      /**
+       * The fence. This browser holds a live production broker session restored
+       * from `data/sessions/anthem-ca.json`, so an unrestricted `goto` is an
+       * egress path with credentials already attached - see the note on
+       * `RECON_HOSTS`. Refusing is deliberately not a throw: a bad command
+       * should not cost the session, which is why the catch below exists too.
+       */
+      if (!isReconOrigin(target)) {
+        console.log(`\n!! refused: ${target}`);
+        console.log(`   The recon harness may only navigate to: ${RECON_HOSTS.join(', ')}`);
+        console.log('   If the portal has genuinely moved, add the host to RECON_HOSTS');
+        console.log('   deliberately and record it in the drift log.');
+        return;
+      }
+      await page.goto(target, { waitUntil: 'domcontentloaded' });
     } else if (answer === 'b') {
       await page.goBack({ waitUntil: 'domcontentloaded' });
     } else if (answer.startsWith('c ')) {

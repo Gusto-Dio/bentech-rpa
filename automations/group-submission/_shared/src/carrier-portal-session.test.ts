@@ -18,6 +18,7 @@ import type { BrowserContext, Page } from 'playwright';
 import {
   classifyPortalError,
   createCarrierPortalSession,
+  probeStoredSession,
   type CarrierLoginFlow,
 } from './carrier-portal-session.ts';
 
@@ -832,5 +833,212 @@ describe('when the portal does not challenge for a code', () => {
     assert.ok(f.login.calls.includes('enterMfaCode'));
 
     await rm(f.dir, { recursive: true, force: true });
+  });
+});
+
+
+/**
+ * The monitor has to know whether looking will cost an MFA code BEFORE it
+ * looks. On this carrier a code takes a measured 132-600s to arrive, expires on
+ * a countdown, and goes primarily to a mailbox we cannot read - so a probe that
+ * accidentally signs in is the most expensive bug this module could have.
+ */
+describe('probeStoredSession', () => {
+  async function withDir<T>(body: (dir: string) => Promise<T>): Promise<T> {
+    const dir = await mkdtemp(path.join(tmpdir(), 'probe-session-'));
+    try {
+      return await body(dir);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  }
+
+  const STORED = JSON.stringify({
+    cookies: [{ name: 'SESSION', value: 'stored' }],
+    origins: [{ origin: 'https://portal.example', localStorage: [{ name: 'k', value: 'v' }] }],
+  });
+
+  it('reports absent when there is no session file, without touching the portal', async () => {
+    await withDir(async (dir) => {
+      const login = new FakeLoginFlow({ probeAnswers: [true] });
+      const ctx = fakeContext();
+
+      const result = await probeStoredSession({
+        storageStatePath: path.join(dir, 'missing.json'),
+        context: ctx.context,
+        page: fakePage().page,
+        login,
+        logger: silentLogger(),
+      });
+
+      assert.equal(result.liveness, 'absent');
+      assert.equal(result.ageMs, undefined);
+      // Not probed at all: there is nothing to probe, and a navigation costs time.
+      assert.equal(login.probes, 0);
+      assert.equal(ctx.addedCookies.length, 0);
+    });
+  });
+
+  /**
+   * A corrupt file is "no session", not fatal - the worst case is one extra
+   * login, and a corrupt file would otherwise wedge every probe until someone
+   * deleted it by hand. Same reading `readStoredState` already applies.
+   */
+  it('treats an unreadable session file as absent rather than throwing', async () => {
+    await withDir(async (dir) => {
+      const file = path.join(dir, 'corrupt.json');
+      await writeFile(file, '{ this is not json', 'utf8');
+      const login = new FakeLoginFlow({ probeAnswers: [true] });
+
+      const result = await probeStoredSession({
+        storageStatePath: file,
+        context: fakeContext().context,
+        page: fakePage().page,
+        login,
+        logger: silentLogger(),
+      });
+
+      assert.equal(result.liveness, 'absent');
+      assert.equal(login.probes, 0);
+      // The file exists, so its age is still reportable.
+      assert.ok(result.ageMs !== undefined && result.ageMs >= 0);
+    });
+  });
+
+  it('reports alive when the portal still accepts the stored session', async () => {
+    await withDir(async (dir) => {
+      const file = path.join(dir, 'session.json');
+      await writeFile(file, STORED, 'utf8');
+      const login = new FakeLoginFlow({ probeAnswers: [true] });
+
+      const result = await probeStoredSession({
+        storageStatePath: file,
+        context: fakeContext().context,
+        page: fakePage().page,
+        login,
+        logger: silentLogger(),
+      });
+
+      assert.equal(result.liveness, 'alive');
+      assert.equal(login.probes, 1);
+    });
+  });
+
+  it('reports lapsed when the portal no longer accepts it', async () => {
+    await withDir(async (dir) => {
+      const file = path.join(dir, 'session.json');
+      await writeFile(file, STORED, 'utf8');
+      const login = new FakeLoginFlow({ probeAnswers: [false] });
+
+      const result = await probeStoredSession({
+        storageStatePath: file,
+        context: fakeContext().context,
+        page: fakePage().page,
+        login,
+        logger: silentLogger(),
+      });
+
+      assert.equal(result.liveness, 'lapsed');
+    });
+  });
+
+  /**
+   * Matches how `step()` coerces a throwing gate to false in `ensureSignedIn`:
+   * a locator error on the way to a signed-in page means "this session is no
+   * good", not "crash the monitor".
+   */
+  it('treats a throwing probe as lapsed rather than propagating it', async () => {
+    await withDir(async (dir) => {
+      const file = path.join(dir, 'session.json');
+      await writeFile(file, STORED, 'utf8');
+      const login = new FakeLoginFlow({ probeAnswers: [true] });
+      login.probeSignedIn = async () => {
+        throw new Error('locator timed out');
+      };
+
+      const result = await probeStoredSession({
+        storageStatePath: file,
+        context: fakeContext().context,
+        page: fakePage().page,
+        login,
+        logger: silentLogger(),
+      });
+
+      assert.equal(result.liveness, 'lapsed');
+    });
+  });
+
+  /**
+   * THE FIDELITY REQUIREMENT. `newContext({ storageState })` would be simpler,
+   * but BrowserSession creates the context before initialize() runs and
+   * Playwright cannot retro-fit a storageState into a live context. A probe
+   * taking the shortcut would prove more than the automation actually gets, and
+   * would report a healthy session on exactly the configuration that breaks
+   * one.
+   */
+  it('applies the session the same way production does - addCookies plus an init script', async () => {
+    await withDir(async (dir) => {
+      const file = path.join(dir, 'session.json');
+      await writeFile(file, STORED, 'utf8');
+      const ctx = fakeContext();
+
+      await probeStoredSession({
+        storageStatePath: file,
+        context: ctx.context,
+        page: fakePage().page,
+        login: new FakeLoginFlow({ probeAnswers: [true] }),
+        logger: silentLogger(),
+      });
+
+      assert.deepEqual(ctx.addedCookies, [{ name: 'SESSION', value: 'stored' }]);
+      assert.equal(ctx.initScripts.length, 1);
+      assert.match(ctx.initScripts[0] ?? '', /localStorage\.setItem/);
+    });
+  });
+
+  /** The whole point: no code is ever requested, on any path. */
+  it('never signs in, so it can never spend an MFA code', async () => {
+    await withDir(async (dir) => {
+      const file = path.join(dir, 'session.json');
+      await writeFile(file, STORED, 'utf8');
+
+      for (const probeAnswers of [[true], [false]]) {
+        const login = new FakeLoginFlow({ probeAnswers });
+        await probeStoredSession({
+          storageStatePath: file,
+          context: fakeContext().context,
+          page: fakePage().page,
+          login,
+          logger: silentLogger(),
+        });
+
+        assert.deepEqual(login.calls, ['probe']);
+        assert.equal(login.sendAt.length, 0);
+        assert.equal(login.resends, 0);
+        assert.equal(login.codeEntered, undefined);
+      }
+    });
+  });
+
+  /** It never writes the session back, so probing cannot refresh what it measured. */
+  it('leaves the stored session untouched', async () => {
+    await withDir(async (dir) => {
+      const file = path.join(dir, 'session.json');
+      await writeFile(file, STORED, 'utf8');
+      const before = await stat(file);
+      const ctx = fakeContext();
+
+      await probeStoredSession({
+        storageStatePath: file,
+        context: ctx.context,
+        page: fakePage().page,
+        login: new FakeLoginFlow({ probeAnswers: [true] }),
+        logger: silentLogger(),
+      });
+
+      assert.equal(ctx.saves, 0);
+      assert.equal(await readFile(file, 'utf8'), STORED);
+      assert.equal((await stat(file)).mtimeMs, before.mtimeMs);
+    });
   });
 });

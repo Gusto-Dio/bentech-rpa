@@ -1,8 +1,7 @@
-import { createCarrierPortalSession, type CarrierPortalSession } from '@auto/group-submission-shared';
-import { createMfaProvider, type MfaMatcher, type WebInitContext } from '@rpa/core';
-import path from 'node:path';
+import type { CarrierPortalSession } from '@auto/group-submission-shared';
+import { createMfaProvider, type WebInitContext } from '@rpa/core';
 import type { AutomationConfig } from './config.ts';
-import { UhcLoginPage } from './pages/login.page.ts';
+import { createUhcSession } from './session.ts';
 
 /**
  * REFramework's InitAllSettings + InitAllApplications for UHC SAMx.
@@ -13,22 +12,13 @@ import { UhcLoginPage } from './pages/login.page.ts';
  * only performs a full login (and consumes an MFA code) when the probe fails.
  */
 export async function initialize(ctx: WebInitContext<AutomationConfig>): Promise<void> {
-  const { portalUrl, usernameEnv, passwordEnv, mfaLabel, mfaSenderAllowList, mfaTimeoutMs } =
-    ctx.config.automation;
-
-  const matcher: MfaMatcher = {
-    label: mfaLabel,
-    fromAllowList: mfaSenderAllowList,
-    // TODO(remap): confirm UHC's code format and the surrounding wording
-    // against a real MFA email before relying on this.
-    codePattern: /\b(\d{6})\b/,
-  };
+  const { portalUrl } = ctx.config.automation;
 
   /**
-   * Whether the code comes from a stdin prompt, a seeded Gmail profile or the
-   * Gmail API is environment configuration (mfa.provider), never a decision
-   * made here - which is what lets the same automation run attended in dev and
-   * unattended in production.
+   * Whether the code comes from a stdin prompt, a seeded Gmail profile, the
+   * Gmail API or IMAP is environment configuration (mfa.provider), never a
+   * decision made here - which is what lets the same automation run attended in
+   * dev and unattended in production.
    *
    * Hoisted so this function owns its lifetime. See the finally below.
    */
@@ -40,24 +30,12 @@ export async function initialize(ctx: WebInitContext<AutomationConfig>): Promise
     abortSignal: ctx.stop.abortSignal,
   });
 
-  const session: CarrierPortalSession = createCarrierPortalSession({
-    carrier: 'uhc',
-    loginUrl: portalUrl,
-    usernameEnv,
-    passwordEnv,
+  const session: CarrierPortalSession = createUhcSession({
+    config: ctx.config.automation,
     secrets: ctx.secrets,
-    /**
-     * Whether that is a stdin prompt, a seeded Gmail profile or the Gmail API
-     * is environment configuration (mfa.provider), never a decision made
-     * here - which is what lets the same automation run attended in dev and
-     * unattended in production.
-     */
     mfa,
-    mfaMatcher: matcher,
-    mfaTimeoutMs,
-    storageStatePath: path.join(ctx.paths.dataDir, 'sessions', 'uhc.json'),
-    login: new UhcLoginPage(ctx.config.automation),
     logger: ctx.logger,
+    dataDir: ctx.paths.dataDir,
   });
 
   let outcome;

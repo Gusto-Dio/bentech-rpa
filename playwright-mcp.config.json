@@ -24,7 +24,9 @@
       "https://www.saucedemo.com",
       "https://brokerportal.anthem.com",
       "https://login.broker.anthem.com",
-      "https://elevancehealthfulcrum.my.site.com"
+      "https://elevancehealthfulcrum.my.site.com",
+      "https://www.uhceservices.com",
+      "https://identity.onehealthcareid.com"
     ]
   },
   "codegen": "typescript",

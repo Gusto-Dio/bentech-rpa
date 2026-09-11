@@ -27,7 +27,9 @@ This runs against the **production Anthem portal**. There is no sandbox.
 - The runbook this was built from is **older than the portal**, and the portal
   has since moved platform entirely. Treat every locator that is not ticked in
   [field-map.md](../../../docs/poc/anthem-ca-new-plans/field-map.md) as an
-  unverified hypothesis. See [PROMPT.md](../../../docs/poc/anthem-ca-new-plans/PROMPT.md).
+  unverified hypothesis. See
+  [drift-log.md](../../../docs/poc/anthem-ca-new-plans/drift-log.md) for what
+  the live portal actually did.
 
 ## Scope
 

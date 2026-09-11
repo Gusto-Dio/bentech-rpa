@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { chromiumLaunchOptions, findRepoRoot, loadConfig } from '@rpa/core';
+import { BOT_REFUSAL_PATTERNS, chromiumLaunchOptions, findRepoRoot, loadConfig } from '@rpa/core';
 import { chromium } from 'playwright';
 
 /**
@@ -16,7 +16,12 @@ import { chromium } from 'playwright';
  * reports what came back. Nothing is typed, nothing is submitted.
  *
  *   pnpm tsx tooling/scripts/check-portal-access.ts [url]
+ *   pnpm tsx tooling/scripts/check-portal-access.ts --automation group-submission/uhc-np-new-plans
  *   HEADLESS=false pnpm tsx tooling/scripts/check-portal-access.ts
+ *
+ * `--automation` picks whose `config.<env>.json` supplies the default URL, so a
+ * second carrier needs no second copy of this script. A positional URL still
+ * wins over both.
  *
  * In the container, where the point is to prove the virtual display works. Note
  * `with-display.sh` rather than `pnpm` as the entrypoint: overriding the
@@ -27,15 +32,16 @@ import { chromium } from 'playwright';
  *     pnpm tsx tooling/scripts/check-portal-access.ts
  */
 
-/** Wording carriers use when they have decided we are a bot. */
-const REFUSALS = [
-  /access denied/i,
-  /request (?:was )?blocked/i,
-  /unusual traffic/i,
-  /are you a (?:human|robot)/i,
-  /pardon our interruption/i,
-  /reference\s*#\d/i,
-];
+/**
+ * Wording carriers use when they have decided we are a bot.
+ *
+ * Moved into `@rpa/core` as `BOT_REFUSAL_PATTERNS` and imported back, because
+ * the sentinel's known-cause catalog needs the same list. Two copies would
+ * eventually disagree, and then this diagnostic and the monitor would give
+ * different answers about the same page - which is the failure mode that makes
+ * a diagnostic untrustworthy.
+ */
+const REFUSALS = BOT_REFUSAL_PATTERNS;
 
 async function main(): Promise<void> {
   const repoRoot = findRepoRoot();
@@ -48,13 +54,34 @@ async function main(): Promise<void> {
   const envFile = path.join(repoRoot, '.env');
   if (existsSync(envFile)) process.loadEnvFile(envFile);
 
+  const args = process.argv.slice(2);
+  const flagAt = args.indexOf('--automation');
+  const automationId =
+    flagAt === -1 ? 'group-submission/anthem-ca-new-plans' : (args[flagAt + 1] ?? '');
+
+  if (automationId === '') {
+    console.error('--automation needs an id, e.g. group-submission/uhc-np-new-plans');
+    process.exitCode = 2;
+    return;
+  }
+
   const config = await loadConfig<{ portalUrl?: string }>({
     repoRoot,
-    automationDir: `${repoRoot}/automations/group-submission/anthem-ca-new-plans`,
+    automationDir: path.join(repoRoot, 'automations', ...automationId.split('/')),
     env: process.env['APP_ENV'] ?? 'dev',
   });
 
-  const url = process.argv[2] ?? config.automation.portalUrl;
+  /**
+   * A positional URL wins over the automation's configured one.
+   *
+   * The `flagAt === -1` guard is load-bearing: without it `flagAt + 1` is 0 and
+   * the check skips index 0, which is exactly where the URL sits when no
+   * --automation flag was passed.
+   */
+  const positional = args.find(
+    (arg, i) => !arg.startsWith('--') && (flagAt === -1 || i !== flagAt + 1),
+  );
+  const url = positional ?? config.automation.portalUrl;
   if (url === undefined) {
     console.error('No URL to check. Pass one as an argument.');
     process.exitCode = 2;
@@ -63,6 +90,7 @@ async function main(): Promise<void> {
 
 
   console.log('check-portal-access');
+  console.log(`  automation: ${automationId}`);
   console.log(`  url      : ${url}`);
   console.log(`  headless : ${config.browser.headless}`);
   console.log(`  display  : ${process.env['DISPLAY'] ?? '(none)'}`);
@@ -96,7 +124,8 @@ async function main(): Promise<void> {
       console.log();
       console.log(
         config.browser.headless
-          ? '  Anthem blocks headless Chromium. Re-run with HEADLESS=false; in a container the\n' +
+          ? '  Carrier portals routinely block headless Chromium - Anthem serves Access Denied\n' +
+              '  outright. Re-run with HEADLESS=false; in a container the\n' +
               '  entrypoint supplies a virtual display via xvfb.'
           : '  Headed and still refused. This is NOT the known headless block - capture the page\n' +
               '  and record it in the drift log before assuming the automation is at fault.',
@@ -122,7 +151,8 @@ async function main(): Promise<void> {
       hasLogin
         ? '  OK - the portal served a sign-in page to this runtime.'
         : '  Loaded, but no sign-in field was found. Check the URL is the login page and not\n' +
-            '  a marketing page - see the first entry in the Anthem drift log.',
+            '  a marketing page - see the first entry in the Anthem drift log. UHC is a known\n' +
+            '  case: its configured portalUrl is still the uhc.com marketing host.',
     );
     if (!hasLogin) process.exitCode = 1;
   } finally {

@@ -33,7 +33,7 @@ considers public API.
 ## Grouping by process type, not by org chart
 
 Automations live under `automations/<domain>/<name>/`, where domain is a process
-type — `group-submission`, `member-submission`, `advising`.
+type — `group-submission`, `member-submission`.
 
 The bet: automations cluster by the *workflow* they perform and the *systems*
 they touch, which is what actually drives shared page objects and shared
@@ -164,7 +164,7 @@ for an automation with genuinely exotic dependencies; it is not built yet.
 
 - **No orchestration.** `schedule` is declared, not executed.
 - **No real queue backend.** `QueueProvider` is the seam.
-- **No vault.** `SecretProvider` is the seam.
+- **No managed secret store.** `SecretProvider` is the seam.
 - **No audit store.** `AuditSink` is the seam, and already emits everything.
 - **No multi-worker parallelism.** The local queue is single-writer on purpose.
 

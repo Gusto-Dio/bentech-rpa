@@ -54,3 +54,16 @@ automations/group-submission/anthem-ca-new-plans/sig-signatory.ts
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Sentinel local state. A CACHE, not an audit store: the GitHub issues are the
+# record of truth and the client rebuilds from open issues, so deleting this
+# loses no correctness - only a cycle of extra API calls. The lock file must
+# never be committed either; a stale one from someone else's machine would
+# block every run.
+data/sentinel/
+
+# A vendored app installer has no business in a source repo.
+docs/poc/**/*.dmg
+
+# Security correspondence never lives in the repo.
+SECURITY-HANDOFF.md

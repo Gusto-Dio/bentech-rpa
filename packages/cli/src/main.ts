@@ -6,6 +6,7 @@ import { newCommand } from './commands/new.ts';
 import { orchestratorCommand } from './commands/orchestrator.ts';
 import { queueCommand } from './commands/queue.ts';
 import { runCommand } from './commands/run.ts';
+import { sentinelCommand } from './commands/sentinel.ts';
 import { validateCommand } from './commands/validate.ts';
 import { errorLine, line, style } from './ui.ts';
 
@@ -31,6 +32,7 @@ const COMMANDS: Record<string, (args: ParsedArgs) => Promise<number>> = {
   doctor: doctorCommand,
   mfa: mfaCommand,
   orchestrator: orchestratorCommand,
+  sentinel: sentinelCommand,
 };
 
 function usage(): void {
@@ -46,6 +48,14 @@ function usage(): void {
   line('  doctor                                 Check that this machine can actually run one');
   line('  mfa seed-profile | check               Set up or verify the Gmail profile that supplies MFA codes');
   line('  orchestrator check [--automation <id>] Verify Orchestrator auth, scopes, folder and queue');
+  line('  sentinel --list | <probe-id> | --set s  Watch a carrier portal for failure AND for drift');
+  line();
+  line(style.bold('rpa sentinel'));
+  line('  --list                          What probes exist, and what each one costs to run');
+  line('  <probe-id>...                   Run named probes. A PROBE id, never an automation id');
+  line('  --set access|session|navigation The scheduled cadences');
+  line('  --file-issues                   Actually file. Dry run is the DEFAULT');
+  line('  --bless --note "<why>"          Record the current screens as the new baseline');
   line();
   line(style.bold('Environment'));
   line('  APP_ENV   dev | staging | prod   selects config/environments/<APP_ENV>.json');

@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, chmod } from 'node:fs/promises';
+import { mkdir, readFile, rm, chmod, stat } from 'node:fs/promises';
 import path from 'node:path';
 import {
   BusinessException,
@@ -188,6 +188,97 @@ type CookieList = Parameters<BrowserContext['addCookies']>[0];
 
 /** Password entry, MFA wait and the landmark all fit inside the MFA timeout plus this. */
 const LOGIN_HEADROOM_MS = 90_000;
+
+/** What a stored session turned out to be worth, without spending an MFA code to find out. */
+export interface StoredSessionLiveness {
+  /**
+   * `absent`  - no file, or an unreadable one. A sign-in would cost a code.
+   * `lapsed`  - the file is there and was applied, but the portal does not
+   *             accept it. A sign-in would cost a code.
+   * `alive`   - the portal still accepts it. A sign-in costs nothing.
+   */
+  liveness: 'absent' | 'lapsed' | 'alive';
+  /** How old the file is, for reporting. `undefined` when there is no file. */
+  ageMs: number | undefined;
+}
+
+/**
+ * Is the stored session still good? Answers WITHOUT ever signing in.
+ *
+ * ── WHY THIS EXISTS ─────────────────────────────────────────────────────────
+ * A monitor that probes a carrier portal on a schedule has to know whether
+ * looking will cost an MFA code before it looks. On this carrier a code takes a
+ * measured 132-600s to arrive by forward, expires on a countdown, and is
+ * delivered primarily to a mailbox we cannot read - so spending one
+ * speculatively is the most expensive thing the schedule can do.
+ *
+ * It reaches `#signIn` on no path. That is the whole point: this is the input
+ * to the decision about whether a sign-in is affordable, not a sign-in.
+ *
+ * ── WHY IT LIVES HERE RATHER THAN IN THE CALLER ─────────────────────────────
+ * Two reasons, and the second is the load-bearing one:
+ *
+ *  1. `readStoredState` and `applyStoredState` are private to this file, and
+ *     this file's own header explains that the sign-in bootstrap was extracted
+ *     because it had been copied three times. A fourth copy of the storage-state
+ *     contract is exactly what that extraction was meant to prevent.
+ *  2. A probe must fail the way production fails. `applyStoredState` uses
+ *     `addCookies` plus an init script, NOT `newContext({ storageState })`,
+ *     because BrowserSession creates the context before `initialize()` runs and
+ *     Playwright cannot retro-fit a storageState into a live context. A probe
+ *     that took the `newContext` shortcut would prove more than the automation
+ *     actually gets, and would report a healthy session on exactly the
+ *     configuration that breaks one.
+ * ────────────────────────────────────────────────────────────────────────────
+ */
+export async function probeStoredSession(options: {
+  storageStatePath: string;
+  context: BrowserContext;
+  page: Page;
+  /** Only `probeSignedIn` is needed, and asking for no more is what keeps this unable to sign in. */
+  login: Pick<CarrierLoginFlow, 'probeSignedIn'>;
+  logger: Logger;
+}): Promise<StoredSessionLiveness> {
+  const logger = options.logger.child({ component: 'carrier-session-probe' });
+
+  /**
+   * Clamped at zero deliberately. `mtimeMs` carries sub-millisecond precision on
+   * APFS while `Date.now()` is whole milliseconds, so a file written moments ago
+   * can report a mtime fractionally in the FUTURE and yield a negative age. A
+   * negative age is meaningless to a caller and reads as a bug in whatever
+   * reports it.
+   */
+  const ageMs = await stat(options.storageStatePath)
+    .then((stats) => Math.max(0, Date.now() - stats.mtimeMs))
+    .catch(() => undefined);
+
+  const stored = await readStoredState(options.storageStatePath, logger);
+  if (stored === undefined) {
+    logger.info({ liveness: 'absent' }, 'No usable stored session; a sign-in would cost an MFA code');
+    return { liveness: 'absent', ageMs };
+  }
+
+  await applyStoredState(options.context, stored);
+
+  /**
+   * A throwing probe reads as `lapsed`, matching how `step()` coerces a
+   * throwing gate to false in `ensureSignedIn`. A locator error on the way to a
+   * signed-in page means "this session is no good", not "crash the monitor".
+   */
+  const accepted = await options.login.probeSignedIn(options.page).catch((cause: unknown) => {
+    logger.warn({ err: cause }, 'The signed-in probe threw; treating the session as lapsed');
+    return false;
+  });
+
+  logger.info(
+    { liveness: accepted ? 'alive' : 'lapsed', ageMs },
+    accepted
+      ? 'The stored session is still accepted; no MFA code is needed'
+      : 'The stored session has lapsed; a sign-in would cost an MFA code',
+  );
+
+  return { liveness: accepted ? 'alive' : 'lapsed', ageMs };
+}
 
 export function createCarrierPortalSession(
   options: CarrierPortalSessionOptions,
