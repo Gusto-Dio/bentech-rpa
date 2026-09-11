@@ -2,7 +2,7 @@ import { createLogger } from '@rpa/core';
 import { chromium, type Page } from 'playwright';
 import { PostSignaturePage } from '../../automations/group-submission/anthem-ca-new-plans/src/pages/post-signature.page.ts';
 import type { AutomationConfig } from '../../automations/group-submission/anthem-ca-new-plans/src/config.ts';
-import { button, field } from '../../automations/group-submission/anthem-ca-new-plans/src/pages/lightning.ts';
+import { button, field } from '../../automations/group-submission/_shared/src/lightning.ts';
 
 /**
  * Checks the `Document Checklist` locators against the LIVE screen, read-only.

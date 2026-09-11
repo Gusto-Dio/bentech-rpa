@@ -4,7 +4,7 @@ import path from 'node:path';
 import type { Page } from 'playwright';
 import { buildAnthemCensusRows } from '../census/quoting-tab.ts';
 import { writeAnthemCensus } from '../census/write-template.ts';
-import { FIELD_TIMEOUT_MS, SCREEN_TIMEOUT_MS, button, stepIs } from './lightning.ts';
+import { FIELD_TIMEOUT_MS, SCREEN_TIMEOUT_MS, button, stepIs } from '@auto/group-submission-shared';
 import { readPortalValidationError } from './portal-errors.ts';
 
 /**
