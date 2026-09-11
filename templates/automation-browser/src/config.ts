@@ -8,7 +8,7 @@ import { z } from 'zod';
  * transaction 40. Strict, so a typo in config.dev.json is loud.
  *
  * Credentials appear here only as the NAME of an environment variable. The
- * value is fetched through ctx.secrets, which is the seam a real vault plugs
+ * value is fetched through ctx.secrets, which is the seam a real secret store plugs
  * into later - so no config file in this repo is ever sensitive.
  */
 export const automationConfigSchema = z.strictObject({

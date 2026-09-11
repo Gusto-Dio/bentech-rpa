@@ -8,6 +8,30 @@ data/queue.*.json
 .env
 .env.*
 !.env.example
+
+# CREDENTIAL-EQUIVALENT — must mirror .gitignore.
+# A persistent browser profile holds a live, logged-in Google session; a
+# storageState file holds live carrier portal cookies. The Dockerfile does one
+# wholesale `COPY . .`, and image layers are immutable - so a build from a
+# working tree that has these would bake BOTH authentication factors into the
+# image permanently, and deleting them in a later layer would not remove them.
+data/profiles/
+data/sessions/
+
+# Each of these hardcodes `allowSubmit: true` against a production carrier
+# portal. They are gitignored for the same reason they are excluded here:
+# nothing that can file an application belongs in an image.
+automations/group-submission/anthem-ca-new-plans/reach-signature.ts
+automations/group-submission/anthem-ca-new-plans/resume-signature.ts
+automations/group-submission/anthem-ca-new-plans/lock-and-look.ts
+automations/group-submission/anthem-ca-new-plans/sig-format.ts
+automations/group-submission/anthem-ca-new-plans/sig-signatory.ts
+
+# Development-only agent tooling. Never part of the runtime.
+.mcp.json
+playwright-mcp.config.json
+playwright-mcp.healing.json
+.claude
 templates
 docs
 certs/README.md

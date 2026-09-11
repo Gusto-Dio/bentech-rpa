@@ -97,9 +97,9 @@ answer into the relevant doc.
 
 ## Decisions deferred to phase 2
 
-- [ ] Orchestrator queue name and folder (the integration is built; see
-      [../../orchestrator.md](../../orchestrator.md))
-- [ ] 1Password or vault adapter behind `SecretProvider`
+- [ ] Orchestrator queue name and folder (the integration is built; see the
+      Orchestrator section of the root [README.md](../../../README.md))
+- [ ] 1Password or AWS Secrets Manager adapter behind `SecretProvider`
 - [ ] Moving from `GmailProfileMfaProvider` to `GmailApiMfaProvider`
 - [ ] Whether artifacts should ship to an Orchestrator storage bucket after each
       run (`BucketClient.uploadFile` already exists)

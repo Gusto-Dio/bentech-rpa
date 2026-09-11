@@ -2,6 +2,7 @@ import {
   discoverAutomations,
   findRepoRoot,
   loadAutomationDefinition,
+  loadProbeSet,
   loadConfig,
   type DiscoveredAutomation,
 } from '@rpa/core';
@@ -65,11 +66,56 @@ export async function validateCommand(args: ParsedArgs): Promise<number> {
     }
   }
 
+  /**
+   * ── Sentinel probe sets ──
+   * A probe set is loaded by a computed path at 02:00 by a scheduled container.
+   * Checking it here means a mis-shaped or missing probe module fails the gate a
+   * human is watching, rather than the unattended run nobody is.
+   */
+  const probeIds = new Map<string, string>();
+  let probeSets = 0;
+
+  for (const automation of automations) {
+    if (automation.manifest.sentinel === undefined) continue;
+    probeSets += 1;
+
+    try {
+      const { probes } = await loadProbeSet(automation);
+
+      for (const probe of probes) {
+        const owner = probeIds.get(probe.id);
+        if (owner !== undefined) {
+          errors.push(
+            `probe id "${probe.id}" is declared by both ${owner} and ${automation.manifest.id}`,
+          );
+          continue;
+        }
+        probeIds.set(probe.id, automation.manifest.id);
+
+        /**
+         * Every screen a probe can visit must be listed, because that is what
+         * turns "no baseline for this screen" from a surprise into a finding
+         * the triage table already has a rule for.
+         */
+        if (probe.screenIds.length === 0) {
+          warnings.push(
+            `${probe.id}: declares no screenIds, so an unmapped screen cannot be reported as one`,
+          );
+        }
+      }
+    } catch (thrown) {
+      errors.push(
+        `${automation.manifest.id}: ${thrown instanceof Error ? thrown.message : String(thrown)}`,
+      );
+    }
+  }
+
   // ── Report ──
   heading('rpa validate');
   line(`  repo        : ${repoRoot}`);
   line(`  APP_ENV     : ${env}`);
   line(`  automations : ${automations.length}`);
+  line(`  probe sets  : ${probeSets} (${probeIds.size} probe${probeIds.size === 1 ? '' : 's'})`);
 
   if (warnings.length > 0) {
     heading(`Warnings (${warnings.length})`);

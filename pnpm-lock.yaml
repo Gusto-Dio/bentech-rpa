@@ -34,12 +34,6 @@ importers:
         specifier: 7.0.2
         version: 7.0.2
 
-  automations/advising/_shared:
-    dependencies:
-      '@rpa/core':
-        specifier: workspace:*
-        version: link:../../../packages/core
-
   automations/group-submission/_shared:
     dependencies:
       '@rpa/core':

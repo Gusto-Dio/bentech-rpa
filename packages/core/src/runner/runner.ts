@@ -19,6 +19,7 @@ import type { AutomationManifest } from '../manifest.ts';
 import { createQueueProvider } from '../queue/factory.ts';
 import type { RetryOwner } from '../queue/OrchestratorQueueProvider.ts';
 import { findAutomation, findRepoRoot, loadAutomationDefinition } from '../registry.ts';
+import { createRunId } from '../run-id.ts';
 import { computeBackoff, sleep } from '../retry.ts';
 import { SecretResolver, type SecretProvider } from '../secrets.ts';
 import { installStopSignal } from '../signals.ts';
@@ -34,7 +35,7 @@ export interface RunOptions {
   /** Stop after N terminal transactions. A debugging aid, not a production knob. */
   maxItems?: number;
   processEnv?: NodeJS.ProcessEnv;
-  /** Injection point for the future vault. Defaults to reading process.env. */
+  /** Injection point for a managed secret store. Defaults to reading process.env. */
   secretProvider?: SecretProvider;
   /**
    * Overrides the configured queue backend. Used by tests and by
@@ -690,7 +691,3 @@ function readRetryOwner(provider: QueueProvider): RetryOwner {
   return declared === 'orchestrator' ? 'orchestrator' : 'runner';
 }
 
-function createRunId(): string {
-  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
-  return `${stamp}-${crypto.randomUUID().slice(0, 6)}`;
-}

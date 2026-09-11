@@ -107,6 +107,18 @@ COPY --chown=pwuser:pwuser . .
 # resolving a different dependency graph than the one that was reviewed.
 RUN pnpm install --frozen-lockfile --prod=false
 
+# Playwright MCP is a DEVELOPMENT tool: it lets an agent drive a browser while
+# an automation is being written. It has no part in the runtime, and this image
+# holds carrier credentials - so a browser-driving server that nothing invokes
+# is attack surface with no upside.
+#
+# It has to be removed explicitly rather than skipped at install, because the
+# install above deliberately keeps devDependencies for pino-pretty. Without this
+# step the image ships it, which is what made the README's "MCP never appears in
+# the container" false for a while.
+RUN rm -rf node_modules/@playwright/mcp node_modules/.bin/playwright-mcp \
+  && ! test -e node_modules/.bin/playwright-mcp
+
 # Set after install so pnpm does not skip devDependencies. pino-pretty is kept
 # available deliberately: being able to set LOG_PRETTY=true while debugging a
 # production container is worth a few megabytes.

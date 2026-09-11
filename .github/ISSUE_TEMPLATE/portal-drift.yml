@@ -1,0 +1,100 @@
+name: Portal drift
+description: A carrier portal changed, or an automation stopped matching it
+title: "[sentinel] <probe>: <what broke>"
+labels: ["portal-sentinel", "portal-drift"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ⛔ Before anyone acts on this
+
+        **Anthem production is frozen to signing in and navigating** (AGENTS.md rule 10a).
+        `pnpm rpa run group-submission/anthem-ca-new-plans` is forbidden **at any
+        `allowSubmit` setting** — a run at `false` still creates a real account and a real
+        quote. **A fix cannot be verified by running the automation.**
+
+        This form is the machine contract with the repair session. Without `runId` and
+        `screenUrl` it cannot reproduce anything, and it will reject the issue rather than
+        guess.
+
+  - type: input
+    id: automationId
+    attributes:
+      label: Automation id
+      placeholder: group-submission/anthem-ca-new-plans
+    validations:
+      required: true
+
+  - type: input
+    id: probeId
+    attributes:
+      label: Probe id
+      placeholder: anthem-ca/portal-navigation
+    validations:
+      required: true
+
+  - type: input
+    id: runId
+    attributes:
+      label: Run id
+      description: Names the evidence directory. Without it there is nothing to read.
+      placeholder: 20260911T140211Z-a1b2c3
+    validations:
+      required: true
+
+  - type: input
+    id: screenUrl
+    attributes:
+      label: Screen URL
+      description: Where the recon browser should be parked to reproduce this.
+    validations:
+      required: true
+
+  - type: input
+    id: stepName
+    attributes:
+      label: Failing step
+      placeholder: reach the quoting platform
+
+  - type: dropdown
+    id: gate
+    attributes:
+      label: Which gate
+      options:
+        - precondition
+        - postcondition
+        - "not a gate failure"
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Screen reading (labels only)
+      description: >
+        The READ_DIAGNOSTICS reduction — alerts, wizardStep, buttons, modal and
+        fields[].label. **Labels only; values dropped.** Rule 2 applies to an issue body.
+      render: json
+
+  - type: textarea
+    id: baselineDiff
+    attributes:
+      label: Baseline diff
+      description: Output of `screen-baseline.ts diff`, or the sentinel's signature delta.
+      render: text
+
+  - type: textarea
+    id: artifacts
+    attributes:
+      label: Evidence paths on the sentinel host
+      description: Paths only. Nothing is uploaded — a signed-in screen carries a real producer name.
+      render: text
+
+  - type: checkboxes
+    id: confirmations
+    attributes:
+      label: Confirmations
+      options:
+        - label: This body contains no PII and no portal values, only labels
+          required: true
+        - label: No screenshot is attached to this issue
+          required: true

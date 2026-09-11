@@ -10,7 +10,7 @@ import { z } from 'zod';
  *
  * ── NOT IMPLEMENTED YET ──────────────────────────────────────────────────────
  * Reading and transforming this is the census port described in
- * docs/poc/excel-macros.md, assigned in each PoC's PROMPT.md.
+ * docs/poc/excel-macros.md.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 

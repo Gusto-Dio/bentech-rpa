@@ -1,11 +1,12 @@
-import { step, type StepContext } from '@rpa/core';
+import { step, textVisible, visible, valueIs, type StepContext } from '@rpa/core';
 import type { Page } from 'playwright';
-import type { AutomationConfig } from '../config.ts';
 import type { Payload } from '../payload.ts';
+import type { ProducerIdentity } from '../producer-identity.ts';
+import { SIGNED_IN_LANDMARK } from './portal-origins.ts';
 
 /**
  * UHC SAMx - finding or creating the case, and assigning the owner.
- * Covers process-steps.md stages 2.1 - 2.2.
+ * Covers runbook stages 2.1 - 2.3.
  *
  * ── WHY THIS SCREEN MATTERS MOST ─────────────────────────────────────────────
  * The runbook already anticipates a partially-automated case:
@@ -23,35 +24,37 @@ import type { Payload } from '../payload.ts';
  * written before this code. Re-map against the live portal with Playwright MCP,
  * and record what differed in docs/poc/uhc-np-new-plans/drift-log.md.
  */
+
+
 export class CaseStartPage {
   readonly #page: Page;
   readonly #steps: StepContext;
-  readonly #config: AutomationConfig;
 
-  constructor(page: Page, steps: StepContext, config: AutomationConfig) {
+  constructor(page: Page, steps: StepContext) {
     this.#page = page;
     this.#steps = steps;
-    this.#config = config;
   }
 
-  /** Step 2.1.1: Small Group Quoting & Renewals -> Samx One -> New Business Dashboard. */
+  /** Stage 2.1: Small Group Quoting & Renewals -> Samx One -> New Business Dashboard. */
   async openNewBusinessDashboard(): Promise<void> {
     await step(this.#steps, {
       name: 'open the new business dashboard',
       precondition: async () =>
-        this.#page.getByRole('link', { name: /Small Group Quoting & Renewals/i }).isVisible(),
+        visible(this.#page.getByRole('link', { name: SIGNED_IN_LANDMARK })),
       action: async () => {
-        await this.#page.getByRole('link', { name: /Small Group Quoting & Renewals/i }).click();
+        await this.#page.getByRole('link', { name: SIGNED_IN_LANDMARK }).click();
         await this.#page.getByRole('link', { name: /Samx One/i }).click();
         await this.#page.getByRole('link', { name: /New Business Dashboard/i }).click();
       },
       // TODO(remap): confirm what the dashboard renders that nothing else does.
-      postcondition: async () => this.#page.getByRole('button', { name: /New Case/i }).isVisible(),
+      // AUTO-HEALING SEAM: a fallback would look for the dashboard's own heading
+      // rather than a control, since New Case may move into a menu.
+      postcondition: async () => visible(this.#page.getByRole('button', { name: /New Case/i })),
     });
   }
 
   /**
-   * Step 2.1.2: the resume path. Returns true when a case for this group already
+   * Stage 2.2: the resume path. Returns true when a case for this group already
    * exists, in which case the caller must NOT create a second one.
    *
    * Searching by company name is what the runbook says; searching by FEIN would
@@ -63,24 +66,34 @@ export class CaseStartPage {
 
     await step(this.#steps, {
       name: 'search the dashboard for an existing case',
-      precondition: async () => this.#page.getByRole('button', { name: /Case Name/i }).isVisible(),
+      precondition: async () => visible(this.#page.getByRole('button', { name: /Case Name/i })),
       action: async () => {
         await this.#page.getByRole('button', { name: /Case Name/i }).click();
         await this.#page.getByRole('textbox').first().fill(payload.companyName);
         await this.#page.keyboard.press('Enter');
       },
-      // The search having *run* is the postcondition, not the group being found -
-      // "not found" is a legitimate outcome that means "create a new case".
+      /**
+       * The search having RUN is the postcondition, not the group being found -
+       * "not found" is a legitimate outcome that means "create a new case".
+       * Reading back the search box is what proves the search ran with this
+       * group's name in it, which a bare "the button is still there" does not.
+       */
       postcondition: async () =>
-        this.#page.getByRole('button', { name: /Case Name/i }).isVisible(),
+        valueIs(this.#page.getByRole('textbox').first(), payload.companyName),
       alwaysRun: true,
     });
 
+    /**
+     * Outside a gate, so isVisible() is the right call here: this is a question
+     * whose "no" is a real answer, and waiting five seconds for the absence of a
+     * link would slow every new group down for nothing. The search has already
+     * been confirmed to have run.
+     */
     return caseLink.isVisible().catch(() => false);
   }
 
   /**
-   * Step 2.1.3: New Case, only when the search found nothing.
+   * Stage 2.2: New Case, only when the search found nothing.
    *
    * The one step in this file whose postcondition CANNOT be
    * transaction-specific: the group is not identified until the employer
@@ -92,34 +105,31 @@ export class CaseStartPage {
   async createNewCase(): Promise<void> {
     await step(this.#steps, {
       name: 'create a new case',
-      precondition: async () => this.#page.getByRole('button', { name: /New Case/i }).isVisible(),
+      precondition: async () => visible(this.#page.getByRole('button', { name: /New Case/i })),
       action: async () => this.#page.getByRole('button', { name: /New Case/i }).click(),
-      postcondition: async () =>
-        this.#page.getByRole('button', { name: /Edit Owners/i }).isVisible(),
+      postcondition: async () => visible(this.#page.getByRole('button', { name: /Edit Owners/i })),
       alwaysRun: true,
     });
   }
 
-  /** Step 2.2: owner assignment - search the producer by name and assign. */
-  async assignOwner(): Promise<void> {
-    const fullName = `${this.#config.producerFirstName} ${this.#config.producerLastName}`;
-
+  /** Stage 2.3: owner assignment - search the producer by name and assign. */
+  async assignOwner(producer: ProducerIdentity): Promise<void> {
     await step(this.#steps, {
       name: 'assign the producer as case owner',
-      precondition: async () => this.#page.getByRole('button', { name: /Edit Owners/i }).isVisible(),
+      precondition: async () => visible(this.#page.getByRole('button', { name: /Edit Owners/i })),
       action: async () => {
         await this.#page.getByRole('button', { name: /Edit Owners/i }).click();
         await this.#page.getByRole('button', { name: /Search Producers/i }).click();
-        await this.#page.getByLabel(/First name/i).fill(this.#config.producerFirstName);
-        await this.#page.getByLabel(/Last name/i).fill(this.#config.producerLastName);
+        await this.#page.getByLabel(/First name/i).fill(producer.firstName);
+        await this.#page.getByLabel(/Last name/i).fill(producer.lastName);
         await this.#page.getByRole('button', { name: /^Search$/i }).click();
         await this.#page
-          .getByRole('row', { name: new RegExp(fullName, 'i') })
+          .getByRole('row', { name: new RegExp(producer.fullName, 'i') })
           .getByRole('button', { name: /Assign/i })
           .click();
         await this.#page.getByRole('button', { name: /Save & Continue/i }).click();
       },
-      postcondition: async () => this.#page.getByText(fullName).isVisible(),
+      postcondition: async () => textVisible(this.#page, producer.fullName),
       businessCheck: async () => readPortalValidationError(this.#page),
     });
   }
@@ -127,6 +137,11 @@ export class CaseStartPage {
 
 /**
  * Reads SAMx's own validation message, if one is showing.
+ *
+ * `isVisible()` is correct here and must stay: this is not a gate. A gate asks
+ * "has the screen got there yet?" and has to wait; this asks "is the portal
+ * complaining right now?", and waiting for an error that is legitimately absent
+ * would add the gate timeout to every successful step in the automation.
  *
  * TODO(remap): confirm the error container. This is the highest-value locator in
  * the whole automation - it is what separates "the portal refused this group's

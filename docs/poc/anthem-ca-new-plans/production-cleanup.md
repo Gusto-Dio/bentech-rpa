@@ -112,8 +112,14 @@ then failed further along, so there are likely **many** accounts named
 - **No member enrollment.** `Member Enrollment Type` was set to
   `Online Census Tool` on the later runs, but no census was ever submitted
   through it.
-- **`The Company LLC 7`** (FEIN `881234573`) is in the repo seed but was
-  **never run** — there is nothing on the portal for it.
+- ~~**`The Company LLC 7`** (FEIN `881234573`) is in the repo seed but was
+  **never run** — there is nothing on the portal for it.~~ **No longer true as
+  of 2026-09-10.** One pre-submission run was authorised that day (see the
+  drift log): run `20260910T174025Z-95a141` created a **real Account and a real
+  quote, `02288925`**, and an employer application filled to Attestation but
+  **left unlocked and unsigned**. It adds to section 2 (orphan quotes) and
+  section 3 (Accounts), NOT to section 1 — nothing was signed, filed, or
+  mailed, and no DocuSign envelope exists for it.
 - **Nothing from 2026-09-04.** The one run that day was stopped immediately
   after sign-in, before any quote was created.
 

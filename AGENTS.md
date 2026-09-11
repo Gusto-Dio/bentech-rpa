@@ -6,10 +6,11 @@ gotchas that have already cost real debugging time.
 
 ## What this repo is
 
-**A proof of concept. It is not intended to go to production.** Nothing here is
-approved to carry production workloads, so do not describe it as production-ready
-or relax a guard on the grounds that it is "only a PoC" — the carrier portals it
-drives are real production portals, which is what rule 10 is about.
+**A capability demonstration, not a deployed system.** Running it as a
+production service needs a hardening and security review first, so do not
+describe it as production-ready. Equally, never relax a guard on the grounds
+that this is "only a demo" — the carrier portals it drives are real production
+portals, which is what rule 10 is about.
 
 An RPA platform for **unattended process automation** on Playwright +
 TypeScript, reproducing the resilience contract of UiPath's REFramework. It is
@@ -32,10 +33,11 @@ It also integrates with an existing **UiPath Orchestrator** (queues, assets,
 storage buckets) so processes can migrate incrementally. The queue backend is
 chosen by environment config, so the same automation runs against a local JSON
 queue in dev and Orchestrator in production without changing. Rules 11-13 below
-cover that layer; [docs/orchestrator.md](docs/orchestrator.md) is the reference.
+cover that layer, and the Orchestrator section of [README.md](README.md) is the
+reference.
 
 Full context: [README.md](README.md) and [docs/](docs/) (architecture,
-authoring, UiPath migration, Orchestrator, operations).
+authoring, UiPath migration, operations).
 
 ## Commands
 
@@ -116,7 +118,7 @@ election against a catalog does not need them. Follow that pattern.
 Config stores the **name** of an environment variable
 (`"passwordEnv": "SAUCE_PASSWORD"`); the value comes from
 `await ctx.secrets.require(name)`. That indirection is why no config file here
-is sensitive, and it is the seam a real vault plugs into. `.env` is gitignored;
+is sensitive, and it is the seam a real secret store plugs into. `.env` is gitignored;
 `.env.example` lists names only.
 
 ### 4. Import boundaries — enforced by `rpa validate`, so it will fail CI
@@ -311,9 +313,41 @@ If you touch the retry loop or the factory, run that test.
 
 Anything whose exact shape depends on the Orchestrator release gets a
 `// TODO(orchestrator):` comment saying what to confirm. `grep -rn
-"TODO(orchestrator)" packages/` is the punch list for a sandbox, and
-`docs/orchestrator.md` tabulates them. Do not silently guess and move on — and
-do not remove a marker without having actually verified it against a tenant.
+"TODO(orchestrator)" packages/` is the punch list for a sandbox. Do not
+silently guess and move on — and do not remove a marker without having
+actually verified it against a tenant.
+
+### 14. Autohealing: the sentinel watches, the healer proposes, a human merges
+
+Portal monitoring (`rpa sentinel`) and unattended repair (`pnpm heal`) are the
+one part of this repo where software acts on a production carrier portal without
+a person in the loop. Four rules, and none of them is negotiable by the agent
+they constrain.
+
+- **A probe creates nothing.** The monitorable surface is bounded by rule 10a:
+  signing in and navigating. A probe is the largest observation that writes
+  nothing, and `packages/core/src/sentinel/probes.test.ts` asserts no sentinel
+  module imports the runner or shells out.
+- **A healer never weakens a check to go green.** Removing a precondition,
+  adding `alwaysRun`, raising a timeout, relaxing a test or flipping a
+  Business/System classification are all refused by
+  `tooling/healing/policy.ts`, and each one has already caused a worse failure
+  here than the one it hid.
+- **Escalate over guess.** A diagnosis on the issue with the proposed patch as a
+  diff is a *completed* heal. A guessed fix edited into an automation that files
+  real applications is not.
+- **Draft pull requests only.** `gh pr merge` and `gh pr ready` are denied. The
+  CODEOWNERS review is the gate, and `main` is protected.
+
+The healer's blast radius is one automation's `src/` plus its drift log. It may
+not write `packages/`, `config/`, `.env*`, `.claude/`, `tooling/`, a test file,
+or the MCP origin allow-list — that last one because widening the fence is
+precisely the change an agent would make to get past a block.
+
+**The self-test is not optional.** `pnpm heal:selftest` proves the policy is
+correct; the supervisor separately proves it is *in the path* by watching a
+throwaway session actually get denied. A correct policy that is never consulted
+is the dangerous state, and it looks exactly like a working one.
 
 ## Where code goes
 
@@ -401,6 +435,12 @@ the generator.
 | A Playwright locator times out on an element that is plainly visible | Check the accessible name and role rather than the visible text. Real examples from Anthem: a button reading "Continue" whose accessible name is `Login` (from `aria-label`); an `input[type=submit]` whose name comes from `value="Next"`; a "Resend Code" **anchor with no `href`**, which therefore has no link role at all; and "Book of Business" appearing five times, once as a `span[role="button"]` menu toggle |
 | `getByRole('button', { name: <visible text> })` matches **zero** elements | An `aria-label` overrides the text content entirely. The Document Checklist's `Submit` carries `aria-label="documentCheckListSubmit"`, so a role lookup for "Submit" finds nothing at all — measured. Use `button()` from `lightning.ts`, which filters on text |
 | Anthem: a second run for the same group times out waiting for the application URL | The portal **redirects** to `/broker/s/inprogressapplication` — "Application Matching Error", only control `Exit` — because that group already has an application in progress. The text has no alert role, so `readPortalValidationError` misses it. `readApplicationMatchingError()` reports it as a Business failure; an end-to-end re-test needs a **different group** |
+| `launchd` runs a sentinel plist and nothing happens | launchd's `PATH` is minimal and does **not** include Docker's binaries, so the job dies with a bare exit 127 and no explanation. Set `EnvironmentVariables.PATH` in the plist explicitly. cron has the same problem; `tooling/sentinel/crontab.example` sets `PATH` at the top for that reason |
+| A scheduled probe reports the bot-block it exists to rule out | The container entrypoint was overridden without naming `with-display.sh`, so the virtual display was lost and Chromium ran headless. Always `--entrypoint tooling/docker/with-display.sh`. Also pass `-e HEADLESS=false` explicitly: compose interpolates `${HEADLESS:-true}` from the project `.env`, so relying on the default makes the run depend on whichever `.env` the host has |
+| `anthem-do.ts "u <url>"` went somewhere unexpected | It is now fenced to `RECON_HOSTS`. Before that it accepted **any** URL while driving a browser holding a live production broker session - an egress path with credentials attached. `anthem-serve.ts` likewise no longer takes a URL argument. Both are parsed host checks, never substring matches |
+| A heal was attempted in a git worktree and could not find `.env` or the session | `.env`, `data/sessions/`, the persistent Chromium profile and CDP 9222 are repo-root singletons, and `findRepoRoot()` in a worktree resolves to the worktree - where both gitignored directories are absent. Symlinking credential-equivalent material into a worktree contradicts `docs/poc/sanitization.md`. Use one dedicated clone, a branch, and the portal lock |
+| A source-level guard passes but proves nothing | Check that it can FAIL. The gate-budget guard's first version used `visible\([^)]*?,\s*(\d+)\)`, which cannot cross the nested parens in `visible(page.getByRole('heading', { name: 'x' }), 45_000)` - so it extracted zero budgets and reported every file clean. `healing-guards.test.ts` now tests the parser on a known violation, because a guard that cannot fail reads as coverage |
+| A drift baseline matches while the automation fails | The baseline was built from a different DOM reading than the automation sees. `READ_DIAGNOSTICS` lives in `src/pages/read-screen.ts` and is imported by **both** `gate-evidence.ts` and the sentinel, so the signature and the failure evidence are provably the same reading. Do not add a second reader |
 
 ## Verifying before you claim something works
 
@@ -455,15 +495,29 @@ PII, no secrets).
 
 - **Orchestration/scheduling.** `automation.json` declares `schedule`; nothing
   executes it yet.
+  **Amended 2026-09-11, deliberately and with the owner's agreement:** the
+  sentinel has a scheduler, and it is intentionally the thinnest thing that
+  works — `tooling/sentinel-cron.sh` plus a launchd plist or a cron line. It
+  does **not** read `automation.json`'s `schedule` block and does not become the
+  thing that block was reserved for. `rpa run` is not in the picture at all,
+  which matters, because for the carrier automations it is forbidden.
 - **More queue backends.** Orchestrator is implemented; Postgres/Redis/SQS are
   not. The local adapter is a JSON file **on purpose** — `better-sqlite3` is a
   native module that compiles per platform, which is exactly the arm64 → amd64
   hazard this repo avoids.
 - **Orchestrator jobs, Action Center tasks, Data Service.** Only queues, assets
   and buckets are integrated.
-- **A vault.** `SecretProvider` is the seam.
+- **A managed secret store.** `SecretProvider` is the seam.
 - **An audit store.** `AuditSink` already emits every event; only the sink is
   missing.
+  **Still absent, and the sentinel must not become one.** `data/sentinel/state.json`
+  is a **cache**: per-fingerprint issue numbers and counters, no event history.
+  The invariant is explicit and tested — **deleting that file loses no
+  correctness**, because the GitHub issues are the record of truth and the
+  client rebuilds from open issues. What is lost is one cycle of extra API
+  calls. Likewise a clean probe run writes **no** evidence directory at all, or
+  ninety-six passes a day would turn `artifacts/` into the store this bullet
+  says we do not have.
 - **Multi-worker parallelism.** The local queue is single-writer.
 - **`ignoreHTTPSErrors`.** See the gotchas table. Not offered as an option.
 - **Browsers other than Chromium.**

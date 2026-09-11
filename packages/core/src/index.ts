@@ -160,7 +160,7 @@ export {
 } from './session/BrowserSession.ts';
 export { NoopSession } from './session/NoopSession.ts';
 
-// ── Secrets (vault seam) ─────────────────────────────────────────────────────
+// ── Secrets (secret-store seam) ──────────────────────────────────────────────
 export {
   EnvSecretProvider,
   SecretResolver,
@@ -222,6 +222,7 @@ export {
   findAutomation,
   findRepoRoot,
   loadAutomationDefinition,
+  loadProbeSet,
   type DiscoveredAutomation,
   type DiscoveryFailure,
   type DiscoveryResult,
@@ -247,3 +248,118 @@ export { installStopSignal, type InstalledStopSignal, type StopSignal } from './
 
 // ── Artifacts ────────────────────────────────────────────────────────────────
 export { ArtifactStore, type ArtifactStoreOptions, type FailureArtifacts } from './artifacts.ts';
+
+// ── Sentinel: portal monitoring, FAILURE and DRIFT kept apart ───────────────
+export {
+  BOT_REFUSAL_PATTERNS,
+  GENERIC_CAUSES,
+  GOTCHA_HINTS,
+  IssueBodyLeak,
+  SIGNATURE_VERSION,
+  buildSignature,
+  createRedactor,
+  diffSignatures,
+  driftLogTerms,
+  filesAnIssue,
+  findLeak,
+  fingerprint,
+  fingerprintMarker,
+  fingerprintPartsFrom,
+  matchKnownCause,
+  parseDriftLog,
+  readFingerprintMarker,
+  renderIssueBody,
+  renderIssueTitle,
+  resolveRules,
+  scoreDriftLogRows,
+  triage,
+  type BaselineStatus,
+  type CauseAction,
+  type CauseMatch,
+  type DriftLogRow,
+  type FieldKind,
+  type FindingFingerprint,
+  type FindingKind,
+  type FingerprintInput,
+  type IssueBodyInput,
+  type KnownCause,
+  type ProbeEvidence,
+  type ProbeVerdict,
+  type RawScreenInput,
+  type Redactor,
+  type RedactorOptions,
+  type RuleReference,
+  type RuntimeFacts,
+  type ScoredDriftLogRow,
+  type ScreenBaseline,
+  type ScreenObservation,
+  type ScreenSignature,
+  type SessionFacts,
+  type SignatureChange,
+  type SignatureDelta,
+  type SignatureKey,
+  type SignatureOptions,
+  type StepTrace,
+  type TriageAction,
+  type TriageOptions,
+  type TriageResult,
+} from './sentinel/index.ts';
+export {
+  assertProbeSet,
+  type MfaBudget,
+  type Probe,
+  type ProbeContext,
+  type ProbeSet,
+  type ProbeSetName,
+} from './sentinel/probe.ts';
+export {
+  BaselineStore,
+  EvidenceStore,
+  type BaselineStoreOptions,
+  type EvidenceStoreOptions,
+  type WrittenEvidence,
+} from './sentinel/evidence.ts';
+export {
+  LockHeldError,
+  PortalLock,
+  StateStore,
+  breakStreaks,
+  bumpDaily,
+  dailyCount,
+  recordSighting,
+  type FingerprintRecord,
+  type LockInfo,
+  type PortalLockOptions,
+  type SentinelState,
+  type StateStoreOptions,
+} from './sentinel/state.ts';
+export {
+  causesFor,
+  decideMfaBudget,
+  readRuntimeFacts,
+  runProbe,
+  type ProbeRun,
+  type RunProbeOptions,
+} from './sentinel/engine.ts';
+export { createRunId } from './run-id.ts';
+export { sentinelConfigSchema, type SentinelConfig } from './config/schema.ts';
+export {
+  GitHubError,
+  GitHubIssuesClient,
+  LABEL_DEFINITIONS,
+  SENTINEL_LABELS,
+  carrierLabel,
+  decideFiling,
+  findByFingerprint,
+  isBeingWorkedOn,
+  labelsFor,
+  probeLabel,
+  recurrenceComment,
+  stormIssue,
+  type CreateIssueInput,
+  type FilingDecision,
+  type FilingInput,
+  type GitHubIssuesClientOptions,
+  type IssueRef,
+  type LabelDefinition,
+} from './sentinel/index.ts';

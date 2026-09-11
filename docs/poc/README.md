@@ -6,17 +6,15 @@ Two real benefits processes, automated against live carrier portals.
 |---|---|---|
 | Portal | Anthem Producer | UHC SAMx |
 | Automation | [`group-submission/anthem-ca-new-plans`](../../automations/group-submission/anthem-ca-new-plans) | [`group-submission/uhc-np-new-plans`](../../automations/group-submission/uhc-np-new-plans) |
-| Dev prompt | [PROMPT.md](anthem-ca-new-plans/PROMPT.md) | [PROMPT.md](uhc-np-new-plans/PROMPT.md) |
 | Boundary | end of the employer application | end of the employer application |
 
-**[PROMPT-00-shared-foundations.md](PROMPT-00-shared-foundations.md) is DONE.**
-The MFA providers, `step()` and session reuse all exist and are proven against
-the live Anthem portal: a real code read from a Gmail label, login completed,
-`data/sessions/anthem-ca.json` persisted, and a recovered session consuming no
-code. Read [mfa-gmail.md](mfa-gmail.md) and AGENTS.md rule 10b before touching
-that layer - several "safety" guards added there discarded valid codes.
-Both PoCs depend on the same MFA module, `step()` helper and session reuse.
-Building them twice would produce two divergent versions.
+**The shared foundations are DONE.** The MFA providers, `step()` and session
+reuse all exist and are proven against the live Anthem portal: a real code read
+from a Gmail label, login completed, `data/sessions/anthem-ca.json` persisted,
+and a recovered session consuming no code. Read [mfa-gmail.md](mfa-gmail.md) and
+AGENTS.md rule 10b before touching that layer - several "safety" guards added
+there discarded valid codes. Both PoCs depend on the same MFA module, `step()`
+helper and session reuse.
 
 ## Phase 1 vs phase 2
 
@@ -25,14 +23,15 @@ Phase 1 — what these PoCs are:
 - Queue items come from a **local JSON seed** (`data/seed/queue.json`)
 - Credentials come from **`.env`**
 - MFA codes are read from a **Gmail label**
-- **No Orchestrator, no 1Password, no vault**
+- **No Orchestrator, no 1Password, no managed secret store**
 
 Phase 2, once the browser automation is proven:
 
 - Swap `queue.provider` to `orchestrator` — one config line, the integration is
-  already built and unit-tested. See [../orchestrator.md](../orchestrator.md).
-- Swap the secret provider for 1Password or a vault — one class behind
-  `SecretProvider`.
+  already built and unit-tested. See the Orchestrator section of the root
+  [README.md](../../README.md).
+- Swap the secret provider for 1Password or AWS Secrets Manager — one class
+  behind `SecretProvider`.
 - Swap `GmailProfileMfaProvider` for `GmailApiMfaProvider` — one config line.
 
 None of that requires touching the automations, which is the whole point of the
@@ -60,6 +59,6 @@ repo**: they carry PII-shaped census rows and real producer identifiers.
 
 The runbooks were written roughly a week before this work. Carrier portals
 change without notice. **Every selector in both automations is an unverified
-hypothesis**, and re-mapping against the live portal is the first task in each
-prompt — not an optional polish step. Divergences get recorded in each PoC's
+hypothesis**, and re-mapping against the live portal is the first task for each
+carrier — not an optional polish step. Divergences get recorded in each PoC's
 `drift-log.md`.

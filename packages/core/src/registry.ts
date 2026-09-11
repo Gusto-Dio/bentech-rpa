@@ -10,6 +10,7 @@ import {
   type AutomationManifest,
   type ManifestIssue,
 } from './manifest.ts';
+import { assertProbeSet, type ProbeSet } from './sentinel/probe.ts';
 
 /**
  * Discovery is a filesystem walk over automation.json manifests, not a
@@ -169,6 +170,46 @@ export async function loadAutomationDefinition(
 
   assertAutomationShape(candidate, automation.manifest.id);
   return candidate as AnyAutomationDefinition;
+}
+
+/**
+ * Loads an automation's probe set, through the same seam as its definition.
+ *
+ * ── WHY THIS IS BOUNDARY-LEGAL ──────────────────────────────────────────────
+ * `packages/` may not import `automations/` - `boundaries.ts` rejects any
+ * literal specifier containing `automations/` or `@auto/`, because the engine
+ * must not depend on its consumers. This does not violate that: the path is
+ * COMPUTED at runtime from the manifest, exactly as `loadAutomationDefinition`
+ * already computes the entry path. The dependency direction is unchanged - core
+ * still knows nothing about any particular carrier, it just knows how to load
+ * whatever a manifest points at.
+ *
+ * That seam is what lets probes live beside the automation they monitor, which
+ * is what keeps this arrangement workable at a hundred automations owned by
+ * five teams.
+ */
+export async function loadProbeSet(automation: DiscoveredAutomation): Promise<ProbeSet> {
+  const declared = automation.manifest.sentinel?.probes;
+  if (declared === undefined) {
+    throw new SystemException(
+      `Automation "${automation.manifest.id}" declares no sentinel probes. Add ` +
+        '`"sentinel": { "probes": "src/sentinel/probes.ts" }` to its automation.json.',
+    );
+  }
+
+  const entryFile = path.join(automation.dir, declared);
+  if (!existsSync(entryFile)) {
+    throw new SystemException(
+      `Automation "${automation.manifest.id}" declares sentinel probes "${declared}" but ` +
+        `${entryFile} does not exist`,
+    );
+  }
+
+  const imported: unknown = await import(pathToFileURL(entryFile).href);
+  const candidate = (imported as { default?: unknown }).default;
+
+  assertProbeSet(candidate, `${automation.manifest.id} (${declared})`);
+  return candidate;
 }
 
 const REQUIRED_METHODS = ['parsePayload', 'initialize', 'processTransaction', 'endProcess'] as const;

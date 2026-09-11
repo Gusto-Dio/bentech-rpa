@@ -1,0 +1,33 @@
+{
+  "$comment": "A NARROWER copy of playwright-mcp.config.json, for the unattended repair session. It drops saucedemo and the UHC hosts: a heal scoped to the Anthem automation has no business on any of them, and the narrower the fence the less there is to reason about. tooling/healing/probe-self-test.ts asserts this file still lists exactly these three origins and aborts the heal if it does not - a widened fence is precisely the change an agent would make to get past a block.",
+  "browser": {
+    "browserName": "chromium",
+    "isolated": true,
+    "launchOptions": {
+      "headless": false
+    },
+    "contextOptions": {
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "locale": "en-US",
+      "timezoneId": "America/Denver"
+    }
+  },
+  "testIdAttribute": "data-test",
+  "timeouts": {
+    "action": 15000,
+    "navigation": 30000
+  },
+  "network": {
+    "allowedOrigins": [
+      "https://brokerportal.anthem.com",
+      "https://login.broker.anthem.com",
+      "https://elevancehealthfulcrum.my.site.com"
+    ]
+  },
+  "codegen": "typescript",
+  "outputDir": ".tmp/heal/mcp-output",
+  "imageResponses": "allow"
+}

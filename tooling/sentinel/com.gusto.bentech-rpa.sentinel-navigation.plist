@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.gusto.bentech-rpa.sentinel-navigation</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>REPLACE_WITH_REPO_PATH/tooling/sentinel-cron.sh</string>
+    <string>navigation</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>REPLACE_WITH_REPO_PATH</string>
+
+  <!--
+    launchd's PATH is minimal and does NOT include Docker's binaries, so
+    `docker` is simply not found and the job fails with a bare exit 127. This
+    is the single most common way one of these plists silently does nothing.
+  -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>APP_ENV</key>
+    <string>dev</string>
+  </dict>
+
+    <key>StartCalendarInterval</key>
+    <array>
+      <dict><key>Hour</key><integer>7</integer><key>Minute</key><integer>10</integer></dict>
+      <dict><key>Hour</key><integer>12</integer><key>Minute</key><integer>10</integer></dict>
+      <dict><key>Hour</key><integer>17</integer><key>Minute</key><integer>10</integer></dict>
+    </array>
+
+  <!-- launchd does not rotate these. See docs/operations.md. -->
+  <key>StandardOutPath</key>
+  <string>REPLACE_WITH_REPO_PATH/artifacts/sentinel/launchd-navigation.log</string>
+  <key>StandardErrorPath</key>
+  <string>REPLACE_WITH_REPO_PATH/artifacts/sentinel/launchd-navigation.log</string>
+
+  <!--
+    Deliberately NOT RunAtLoad. Loading three of these at login would fire all
+    three cadences at once, including the one that can spend an MFA code.
+  -->
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

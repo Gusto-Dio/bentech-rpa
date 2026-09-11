@@ -2,13 +2,13 @@
   "$comment": "SYNTHETIC. 'The Company LLC' is the dummy group from the Benefits reference material - it is not a real company, and the SSNs in the matching census are deliberately invalid (000-xx-xxxx). Never add a real group here: see docs/poc/sanitization.md. GROUP NAME carries a trailing number on purpose: Anthem refuses to create a second application for a group that already has one in progress ('Application Matching Error'), so each end-to-end test run needs a distinct group. Bump the number rather than reusing a name. CONTRACT CODES were replaced on 2026-09-03: the original set (8VDP 8V9F 8V7B 8VC4) came from the August 2026 dummy pack and Anthem no longer offers it - the carrier rotates contract codes by plan year. The four below were read off the live plan list for a Sep 1 2026 California small-group quote. They will go stale the same way; when stage 5 raises 'contract code not offered', re-read the list rather than assuming the automation is broken.",
   "items": [
     {
-      "reference": "ANTHEM-NP-0007",
+      "reference": "ANTHEM-NP-0009",
       "priority": "normal",
       "payload": {
-        "companyID": "7789123456789123",
-        "companyName": "The Company LLC 7",
-        "fein": "881234573",
-        "applicationID": "135791",
+        "companyID": "7789123456789129",
+        "companyName": "The Company LLC 9",
+        "fein": "881234579",
+        "applicationID": "135793",
         "entityType": "llc",
         "sicCode": "7311",
         "dateEstablished": "2024-01-03",
@@ -31,7 +31,7 @@
           "email": "jane.doe@thecompany.example",
           "title": "CEO"
         },
-        "coverageEffectiveDate": "2026-09-01",
+        "coverageEffectiveDate": "2026-10-01",
         "ratingStructure": "age_banded",
         "medicalDeductibleReset": "Empty",
         "policies": [

@@ -26,4 +26,3 @@
 # ---- Automations: one entry per process-type domain ----
 /automations/group-submission/  @oscarmiza
 /automations/member-submission/ @oscarmiza
-/automations/advising/          @oscarmiza

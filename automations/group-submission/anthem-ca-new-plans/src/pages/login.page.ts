@@ -1,6 +1,7 @@
 import type { CarrierLoginFlow } from '@auto/group-submission-shared';
 import type { Page } from 'playwright';
 import type { AutomationConfig } from '../config.ts';
+import { OKTA_HOST, PORTAL_HOST } from './portal-origins.ts';
 
 /**
  * Anthem CA Producer Toolbox - sign-in and MFA.
@@ -58,7 +59,7 @@ const MFA_DECISION_TIMEOUT_MS = 20_000;
 export function isPortalUrl(url: string, pathPrefix = '/apps/ptb'): boolean {
   try {
     const parsed = new URL(url);
-    return parsed.host === 'brokerportal.anthem.com' && parsed.pathname.startsWith(pathPrefix);
+    return parsed.host === PORTAL_HOST && parsed.pathname.startsWith(pathPrefix);
   } catch {
     return false;
   }
@@ -80,15 +81,16 @@ function signedInLandmark(page: Page): ReturnType<Page['getByText']> {
 }
 
 /**
- * Okta, which fronts both the initial password screen and the SAML hand-off.
+ * Re-exported, not redefined.
  *
- * Exported because `quote-start.page.ts` needs the same constant: its copy
- * detects that the hand-off ARRIVED on Okta, this file's detects that
- * `resolveSamlChallenge` has LEFT it. Two halves of one protocol, so two
- * literals would let arrival and departure disagree if Anthem ever moves the
- * host.
+ * `quote-start.page.ts` imports it from here and `login.page.test.ts` asserts
+ * that it does rather than carrying its own literal: that file's copy detects
+ * the hand-off ARRIVING on Okta, this one's detects `resolveSamlChallenge`
+ * LEAVING it. Two halves of one protocol, so two literals would let arrival and
+ * departure disagree if Anthem ever moves the host. `portal-origins.ts` now
+ * owns the value so the reconnaissance allow-list shares it too.
  */
-export const OKTA_HOST = 'login.broker.anthem.com';
+export { OKTA_HOST };
 
 /** Okta's field name, reused for both the password and the one-time code. */
 export const OKTA_PASSCODE_FIELD = 'input[name="credentials.passcode"]';

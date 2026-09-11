@@ -29,10 +29,12 @@ export {
 export {
   classifyPortalError,
   createCarrierPortalSession,
+  probeStoredSession,
   type CarrierLoginFlow,
   type CarrierPortalSession,
   type CarrierPortalSessionOptions,
   type SignInOutcome,
+  type StoredSessionLiveness,
 } from './carrier-portal-session.ts';
 
 export {

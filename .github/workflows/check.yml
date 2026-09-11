@@ -1,0 +1,53 @@
+name: check
+
+# ── WHY THIS EXISTS ─────────────────────────────────────────────────────────
+# There was no CI in this repository, which made "`pnpm check` passed" the
+# author's own word for it. AGENTS.md says explicitly not to accept a quoted
+# test count - "read the number `pnpm check` prints" - and that applies doubly
+# to a pull request opened by an unattended repair session.
+#
+# Deliberately small. It runs exactly the gate a developer runs, and nothing
+# that touches a network: the suite already guarantees that (the only networked
+# test is opt-in behind ORCH_SMOKE). Rungs 2-6 of the verification ladder stay
+# human, because they need the corporate network, real credentials and a display.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Pinned in .nvmrc, mise.toml and engines, and matched to the
+          # Playwright runtime image so dev, CI and production agree.
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Chromium is needed by gates.test.ts and masks.test.ts, which assert
+      # against a real DOM rather than a string - the only way to prove a
+      # selector reaches what it claims to.
+      - run: pnpm exec playwright install --with-deps chromium
+
+      - run: pnpm typecheck
+
+      # Manifests, import boundaries, config loadability, and the sentinel
+      # probe sets. A broken probe set fails here rather than at 02:00 in a
+      # scheduled container nobody is watching.
+      - run: pnpm rpa validate
+
+      - run: pnpm test

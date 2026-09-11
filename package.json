@@ -18,7 +18,8 @@
     "browsers:install": "playwright install chromium",
     "browsers:install:linux": "playwright install --with-deps chromium",
     "mcp": "playwright-mcp --config playwright-mcp.config.json",
-    "test": "node --import tsx --test \"packages/**/*.test.ts\" \"automations/**/*.test.ts\""
+    "test": "node --import tsx --test \"packages/**/*.test.ts\" \"automations/**/*.test.ts\" \"tooling/**/*.test.ts\"",
+    "heal:selftest": "tsx tooling/healing/probe-self-test.ts"
   },
   "devDependencies": {
     "@auto/group-submission-shared": "workspace:*",

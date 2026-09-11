@@ -1,15 +1,16 @@
 # bentech-rpa
 
-> **This repo is a proof of concept. It is not intended to go to production.**
-> It exists to prove one thing: that carrier-portal work can run unattended with
-> the resilience contract we relied on in UiPath's REFramework. "Working and
-> verified end to end" in the table below means verified *as a PoC* — nothing
-> here is approved to carry production workloads, and taking any of it further
-> requires a deliberate hardening and security review first.
+> **This is a capability demonstration, not a deployed system.** It exists to
+> prove that carrier-portal work can run unattended with the resilience
+> contract we relied on in UiPath's REFramework — and that we can build the
+> platform around it in-house. Running any of it as a production service needs
+> a hardening and security review first; see the three phases below for what is
+> proven, what is being built, and what is still exploration.
 >
-> Note the distinction, because the word does double duty here: the repo is not
-> production, but the carrier *portals* the PoCs drive are real production
-> portals with no sandbox. That is exactly why `allowSubmit` stays `false`.
+> One distinction matters throughout, because it is easy to misread: **the
+> repository is not production, but the carrier portals it drives are real
+> production portals with no sandbox.** That is exactly why `allowSubmit` stays
+> `false`.
 
 An RPA platform for **unattended process automation** on Playwright + TypeScript,
 built to carry over the resilience contract we relied on in UiPath's REFramework:
@@ -42,11 +43,41 @@ Working and verified end to end:
 | **Orchestrator integration** | External-Application auth, queue provider in two modes, assets-backed secrets, storage buckets, `rpa orchestrator check` |
 | **MFA from a mailbox** | `GmailUiMfaProvider` (browser) and `GmailApiMfaProvider` (REST) behind one seam, with a watermark, a sender allow-list and single-label scoping. **Proven end to end against the live Anthem portal** — real code read, login completed, session persisted |
 | **Session reuse** | `createCarrierPortalSession` probes a stored `storageState` with a signed-in-only page. A recovered session consumes **no** MFA code — verified in a real run |
-| **Carrier PoCs** | Anthem CA: **working end to end** — an unattended run drives quote creation, the census round-trip, plan selection, quote generation and all nine editable screens of the employer application, then stops on the `allowSubmit` guard at the last editable screen (82 steps, 0 system failures, no MFA code spent). Note the flow moved to Anthem's **Salesforce/Vlocity** platform, so the original runbook's stages 2.2–8 no longer exist as written. The signature is deliberately unmapped. UHC: scaffolded, login unverified |
+| **Carrier PoCs** | Anthem CA: **working end to end** — an unattended run drives quote creation, the census round-trip, plan selection, quote generation and all nine editable screens of the employer application, then stops on the `allowSubmit` guard at the last editable screen (82 steps, 0 system failures, no MFA code spent). Note the flow moved to Anthem's **Salesforce/Vlocity** platform, so the original runbook's stages 2.2–8 no longer exist as written. The signature is deliberately unmapped. UHC: stages 1–8 written and the portal-independent half tested — census transform, derived values, evidence hook, session seam and the `allowSubmit` guard — but **no locator has ever met a live screen**: the eServices pre-login page is reachable but sign-in crosses to One Healthcare ID and nothing past it has been read, so every portal literal is recorded as `null` and throws rather than guessing. A recon harness (`uhc-serve` / `uhc-do`) is there to do the re-map on one MFA code |
 | Checks | `pnpm check` — strict typecheck, boundary + manifest validation, and the full test suite |
 
 Deliberately seams only, not implementations — see [Roadmap](#roadmap-the-layers-this-is-built-to-accept):
-orchestration/scheduling, a vault, an audit store.
+orchestration/scheduling, a secrets manager, an audit store.
+
+## Watching the portals
+
+The carrier portals change underneath these automations — the Anthem quote flow
+moved to a different host mid-PoC, and `docs/poc/*/drift-log.md` records about a
+hundred and thirty divergences between what a runbook said and what the portal
+actually does.
+
+`rpa sentinel` watches for two distinct things:
+
+```bash
+pnpm rpa sentinel --list                 # what probes exist, and what each costs to run
+pnpm rpa sentinel --set access           # a dry run. Filing is opt-in
+```
+
+- **failure** — a probe could not do what it set out to do
+- **drift** — a probe succeeded, but the screen is not the screen we recorded
+
+Drift is the half worth having: a field renamed today breaks a run next week.
+Probes create nothing, because rule 10a permits only signing in and navigating.
+
+When the sentinel files a healable finding, an unattended repair session can
+propose a fix as a **draft** pull request, with a masked before/after pair and a
+verification ladder. It never merges. See
+[docs/operations.md](docs/operations.md) for the operational surface and
+`.claude/skills/portal-drift-repair/SKILL.md` for the procedure.
+
+```bash
+pnpm heal:selftest                       # prove the guard rails before trusting a heal
+```
 
 ## Quickstart
 
@@ -193,7 +224,7 @@ packages/            THE CORE - platform team owns. One version, no forks.
     mfa/             MFA code providers (seam) - carrier portals need MFA
     steps.ts         precondition -> action -> postcondition helper
     queue/           LocalQueueProvider, OrchestratorQueueProvider, factory
-    secrets/         Orchestrator assets + provider chaining (vault seam)
+    secrets/         Orchestrator assets + provider chaining (secrets-manager seam)
   cli/               @rpa/cli: the `rpa` command
   testkit/           @rpa/testkit: fakes and fixtures for testing automations
 automations/         THE PROCESSES - grouped by process type, each domain owns its own
@@ -203,7 +234,6 @@ automations/         THE PROCESSES - grouped by process type, each domain owns i
     uhc-np-new-plans/               PoC: UHC SAMx portal (MFA)
     carrier-portal-submission-demo/ reference implementation (saucedemo)
   member-submission/
-  advising/
 templates/           THE SCAFFOLDS - `rpa new`, never copy-paste
 tooling/             tsconfig bases, Dockerfile, scripts
 config/              platform.json + environments/{dev,staging,prod}.json
@@ -432,7 +462,7 @@ pnpm rpa orchestrator check --env staging --automation <id>   # do this first
 pnpm rpa run <id> --provider orchestrator --env staging
 ```
 
-Full detail in **[docs/orchestrator.md](docs/orchestrator.md)**. The essentials:
+The essentials:
 
 ### (a) The External Application and its scopes
 
@@ -545,10 +575,10 @@ exit codes are a stable contract (`0` ok, `1` system failures, `2` init failed,
 Kubernetes `CronJob` per manifest; graduate to a real orchestrator when
 cross-automation dependencies appear.
 
-### (c) Vault
+### (c) A managed secret store
 
 `ctx.secrets` is a `SecretProvider`. The env-backed implementation is 15 lines;
-a Vault or AWS Secrets Manager one replaces it without touching an automation,
+an AWS Secrets Manager one replaces it without touching an automation,
 because config files already store credential *names* rather than values. The
 manifest is where an automation would declare which secret paths it is entitled
 to.
@@ -642,11 +672,8 @@ Honest list, so nobody discovers these the hard way.
 - [docs/poc/anthem-ca-new-plans/drift-log.md](docs/poc/anthem-ca-new-plans/drift-log.md)
   — **read this before the Anthem runbook.** What the live portal actually does,
   including the 2026-09-03 move to a different platform
-- [docs/poc/](docs/poc/) — the two carrier-portal PoCs (Anthem CA, UHC), their
-  sanitized process references, and **one development prompt each**
-- [docs/orchestrator.md](docs/orchestrator.md) — the Orchestrator integration in
-  full: modes, retry ownership, SpecificContent, secrets, buckets, and the
-  version-dependent punch list
+- [docs/poc/](docs/poc/) — the two carrier-portal PoCs (Anthem CA, UHC) and
+  their sanitized process references
 - [docs/operations.md](docs/operations.md) — running, diagnosing and stopping
   automations; exit codes, logs, evidence
 - [certs/README.md](certs/README.md) — trusting an internal CA inside the
@@ -655,7 +682,6 @@ Honest list, so nobody discovers these the hard way.
 ## First steps for a new clone
 
 ```bash
-git init && git add -A && git commit -m "Initial import"   # not a git repo yet
 pnpm install
 pnpm exec playwright install chromium
 cp .env.example .env                                        # then fill it in
@@ -684,4 +710,3 @@ pnpm rpa orchestrator check --env staging --automation group-submission/carrier-
 That command is the honest starting point: `staging.json` and `prod.json` ship
 with **placeholder** `organization`, `tenant` and `folderId`, and it will tell
 you precisely what is missing rather than failing somewhere less obvious later.
-See [docs/orchestrator.md](docs/orchestrator.md).

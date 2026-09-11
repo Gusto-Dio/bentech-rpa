@@ -47,6 +47,20 @@ export const automationManifestSchema = z.strictObject({
       timezone: z.string().min(3),
     })
     .optional(),
+  /**
+   * Portal monitoring. Points at the module exporting this automation's probes.
+   *
+   * Optional because most automations have nothing to monitor: the demo and the
+   * roster validator do not touch a portal that can change underneath them.
+   * Declaring it is what makes `rpa sentinel` able to find the probes, and
+   * `rpa validate` checks that the file exists and default-exports a ProbeSet -
+   * so a broken probe set fails the gate rather than the 02:00 scheduler.
+   */
+  sentinel: z
+    .strictObject({
+      probes: z.string().min(1),
+    })
+    .optional(),
   tags: z.array(z.string()).default([]),
 });
 
