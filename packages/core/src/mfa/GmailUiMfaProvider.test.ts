@@ -256,10 +256,19 @@ describe('parseGmailDate', () => {
 });
 
 describe('parseAccountFromTitle', () => {
+  /**
+   * A synthetic address, deliberately.
+   *
+   * This fixture used the real mailbox the PoC reads. That address is half of
+   * an IMAP credential - `MFA_IMAP_USER`, whose other half is
+   * `MFA_IMAP_APP_PASSWORD` - and rule 3 keeps values out of tracked files
+   * whichever half they are. The parser only cares about the shape of Gmail's
+   * title, so a realistic-looking address proves exactly as much.
+   */
   it('reads the mailbox Gmail names in its title', () => {
     assert.equal(
-      parseAccountFromTitle('Inbox (3) - benefitsoperations@gusto.com - Gmail'),
-      'benefitsoperations@gusto.com',
+      parseAccountFromTitle('Inbox (3) - mailbox@example.test - Gmail'),
+      'mailbox@example.test',
     );
   });
 
