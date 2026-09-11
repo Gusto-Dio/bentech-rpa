@@ -1,10 +1,29 @@
 name: check
 
-# ── WHY THIS EXISTS ─────────────────────────────────────────────────────────
-# There was no CI in this repository, which made "`pnpm check` passed" the
-# author's own word for it. AGENTS.md says explicitly not to accept a quoted
-# test count - "read the number `pnpm check` prints" - and that applies doubly
-# to a pull request opened by an unattended repair session.
+# ── THIS WORKFLOW DOES NOT RUN YET. READ THIS BEFORE RELYING ON IT ──────────
+# GitHub Actions is DISABLED on this repository by the Gusto organization:
+#
+#   $ gh api repos/Gusto/bentech-rpa/actions/permissions
+#   {"enabled":false,...}
+#
+# So this file is registered but has never executed - `gh run list` returns
+# nothing, and it appeared in no pull request's checks. The ~19 checks that DO
+# appear (Secrets Analyzer, Wiz, Socket, boostsecurity) are org-level GitHub
+# Apps, not Actions, and none of them runs a test. There is no Buildkite
+# pipeline for this repository either.
+#
+# An earlier version of this header claimed the gate was live. It was not, and
+# a CI claim that is false is worse than an acknowledged absence: a reviewer
+# who believes a suite ran stops re-running it. Until an owner enables Actions
+# (or ports the job below to Buildkite), **the reviewer must run `pnpm check`
+# themselves** - which is what the healing pull-request template now asks for.
+#
+# ── WHY IT EXISTS ANYWAY ────────────────────────────────────────────────────
+# It is correct and complete, so enabling Actions is the only remaining step.
+# Without it, "`pnpm check` passed" is the author's own word for it. AGENTS.md
+# says explicitly not to accept a quoted test count - "read the number
+# `pnpm check` prints" - and that applies doubly to a pull request opened by an
+# unattended repair session.
 #
 # Deliberately small. It runs exactly the gate a developer runs, and nothing
 # that touches a network: the suite already guarantees that (the only networked
