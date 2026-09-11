@@ -19,7 +19,7 @@ import {
   check,
   field,
   type as typeInto,
-} from './lightning.ts';
+} from '@auto/group-submission-shared';
 import { readPortalValidationError } from './portal-errors.ts';
 
 /**

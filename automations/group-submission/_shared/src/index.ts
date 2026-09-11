@@ -48,3 +48,29 @@ export {
 } from './census/hippo-census.ts';
 
 export { HippoCensusReader, excelSerialToIsoDate, splitCsvLine } from './census/hippo-census-reader.ts';
+
+// ── Salesforce Lightning / Vlocity, shared by every automation on that platform ──
+export {
+  DOCUMENT_TIMEOUT_MS,
+  FIELD_TIMEOUT_MS,
+  RAIL_POLL_TIMEOUT_MS,
+  SCREEN_TIMEOUT_MS,
+  answer,
+  answerIfPresent,
+  button,
+  check,
+  choose,
+  chosen,
+  dismissModal,
+  field,
+  isAnswered,
+  isSelected,
+  picker,
+  question,
+  sameDigits,
+  select,
+  selected,
+  stepIs,
+  type,
+  typeahead,
+} from './lightning.ts';
