@@ -64,3 +64,6 @@ data/sentinel/
 
 # A vendored app installer has no business in a source repo.
 docs/poc/**/*.dmg
+
+# Security correspondence never lives in the repo.
+SECURITY-HANDOFF.md
