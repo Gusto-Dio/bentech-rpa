@@ -270,8 +270,10 @@ deprecated pattern outlives its deprecation.
 | No duplicate `id` or `queue.name` | Two automations sharing a queue would silently steal each other's work |
 
 It also loads every automation module and resolves every automation's config, so
-"it imports cleanly and its settings are complete" is proven in CI rather than
-discovered at 03:00 by the scheduler.
+"it imports cleanly and its settings are complete" is proven before merge rather
+than discovered at 03:00 by the scheduler. `pnpm check` runs it — and since
+Actions is disabled org-wide here, running it is the reviewer's job, not a
+robot's.
 
 ---
 

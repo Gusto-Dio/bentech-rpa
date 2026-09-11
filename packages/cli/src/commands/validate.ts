@@ -15,8 +15,12 @@ import { heading, line, style } from '../ui.ts';
  *
  * Deliberately does more than a linter would: it loads every automation module
  * and resolves every automation's config, so "it imports cleanly and its
- * settings are complete" is proven in CI rather than discovered at 03:00 by the
- * scheduler.
+ * settings are complete" is proven before merge rather than discovered at 03:00
+ * by the scheduler.
+ *
+ * "Before merge" means a human, not a robot: GitHub Actions is disabled on this
+ * repository by the organization, so `.github/workflows/check.yml` is registered
+ * but has never run. Its header carries the evidence.
  */
 export async function validateCommand(args: ParsedArgs): Promise<number> {
   const repoRoot = findRepoRoot();

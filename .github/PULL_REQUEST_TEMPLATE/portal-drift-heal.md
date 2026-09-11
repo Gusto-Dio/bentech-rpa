@@ -79,7 +79,10 @@ Unmasked originals: `artifacts/<runId>/…` on the healing host. **Not uploaded.
 - [ ] The masked pair shows no group, member, producer or agency value — including
       anything a canvas or background image could have rendered, which the geometry
       check cannot see
-- [ ] CI is green, **and** rungs 2–6 were reported honestly (CI covers 0 and 1 only)
+- [ ] **I ran `pnpm check` myself** — Actions is disabled org-wide on this repo, so
+      `.github/workflows/check.yml` never fires and the checks you see are security
+      scanners that run no tests. Rungs 0 and 1 are only covered if you cover them
+- [ ] Rungs 2–6 were reported honestly, including what was *not* verified
 - [ ] If a live run is needed to confirm, it is scheduled for after the freeze lifts
 
 ## Session

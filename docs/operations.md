@@ -407,5 +407,13 @@ Operational notes:
 - It opens **draft** pull requests and never merges. `main` must be protected
   with a required CODEOWNERS review; until it is, "never merges" rests on the
   policy alone.
+- **There is no automated test gate on a pull request.** GitHub Actions is
+  disabled on this repository by the organization, so
+  `.github/workflows/check.yml` is registered but has never executed, and there
+  is no Buildkite pipeline. The checks that appear on a pull request are
+  org-level security scanners; none of them runs `pnpm check`. A repair session's
+  own `pnpm check` output in the pull-request body is therefore the *author's*
+  claim, and the reviewer has to re-run it. Two owner actions would fix this:
+  enable Actions for the repository, or port `check.yml` to Buildkite.
 - Its transcript is at `artifacts/heal/<issue>/transcript.jsonl`, gitignored and
   never uploaded.
