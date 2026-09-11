@@ -201,12 +201,12 @@ describe('createPermissionHandler', () => {
 
       await handle({
         toolName: 'Write',
-        input: { file_path: `${REPO}/.tmp/heal/x.json`, content: '{"password":"hunter2","ssn":"123-45-6789"}' },
+        input: { file_path: `${REPO}/.tmp/heal/x.json`, content: '{"password":"hunter2","ssn":"000-45-6789"}' },
       });
 
       const raw = await readFile(path.join(dir, 'transcript.jsonl'), 'utf8');
       assert.doesNotMatch(raw, /hunter2/);
-      assert.doesNotMatch(raw, /123-45-6789/);
+      assert.doesNotMatch(raw, /000-45-6789/);
     });
   });
 });

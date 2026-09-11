@@ -10,7 +10,7 @@ PATH=/usr/local/bin:/usr/bin:/bin
 # Non-zero exits are mailed here. Worth setting: exit 1 means a healable finding
 # was filed, exit 2 means a person is needed, and exit 4 means the sentinel
 # could not look at all - which is NOT a portal verdict.
-MAILTO=bentech-rpa-oncall@gusto.com
+MAILTO=REPLACE_WITH_YOUR_TEAM_ALIAS
 
 APP_ENV=dev
 

@@ -29,7 +29,14 @@ describe('isReconOrigin', () => {
     const smuggled =
       'https://evil.example/collect' +
       '?redirect_uri=https://brokerportal.anthem.com/apps/ptb/_codexch' +
-      '&origin=/apps/ptb/?utm_source=landing&login_hint=kudosinsurance';
+      /**
+       * `login_hint` is SYNTHETIC here. The captured URL carried the real
+       * portal username, which is half of a licensed producer's credential and
+       * has no business in a tracked file (rule 3). The trap this test exists
+       * for is the `redirect_uri` query parameter quoting the portal host, and
+       * that is unaffected by the hint.
+       */
+      '&origin=/apps/ptb/?utm_source=landing&login_hint=a-producer-username';
 
     assert.equal(isReconOrigin(smuggled), false);
   });

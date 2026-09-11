@@ -84,7 +84,7 @@ describe('createRedactor - leaks', () => {
 describe('createRedactor - PII classes', () => {
   const cases: readonly (readonly [string, string])[] = [
     ['Contact: ops.team+anthem@example.com', 'Contact: <email>'],
-    ['SSN 123-45-6789', 'SSN <ssn>'],
+    ['SSN 000-45-6789', 'SSN <ssn>'],
     ['Employer Tax ID 94-1234567', 'Employer Tax ID <tin>'],
     ['Main Phone (415) 555-0134', 'Main Phone <phone>'],
     ['Contact Phone 415-555-0134', 'Contact Phone <phone>'],
@@ -107,7 +107,7 @@ describe('createRedactor - PII classes', () => {
 
   /** SSN and EIN are both digit runs; the punctuated shapes must win first. */
   it('does not let the generic digit rule pre-empt an SSN or a TIN', () => {
-    assert.equal(redactor().text('123-45-6789 and 94-1234567'), '<ssn> and <tin>');
+    assert.equal(redactor().text('000-45-6789 and 94-1234567'), '<ssn> and <tin>');
   });
 });
 
