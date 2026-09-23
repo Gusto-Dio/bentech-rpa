@@ -1,0 +1,21 @@
+{
+  "$comment": "Synthetic seed transactions. NEVER put real group data here - use obviously fake identifiers.",
+  "items": [
+    {
+      "reference": "GRP-0001",
+      "priority": "normal",
+      "payload": {
+        "groupNumber": "GRP-0001",
+        "groupName": "Northwind Test Bakery"
+      }
+    },
+    {
+      "reference": "GRP-0002",
+      "priority": "normal",
+      "payload": {
+        "groupNumber": "GRP-0002",
+        "groupName": "Fabrikam Test Holdings"
+      }
+    }
+  ]
+}

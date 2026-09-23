@@ -26,3 +26,4 @@
 # ---- Automations: one entry per process-type domain ----
 /automations/group-submission/  @oscarmiza
 /automations/member-submission/ @oscarmiza
+/automations/packet-collection/ @Gusto-Dio

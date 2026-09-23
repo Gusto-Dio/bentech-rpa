@@ -1,0 +1,13 @@
+{
+  "name": "@auto/packet-collection-bcbs-ma-packets",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Bcbs Ma Packets (packet-collection)",
+  "dependencies": {
+    "@rpa/core": "workspace:*",
+    "@auto/packet-collection-shared": "workspace:*",
+    "playwright": "1.62.1",
+    "zod": "4.5.4"
+  }
+}

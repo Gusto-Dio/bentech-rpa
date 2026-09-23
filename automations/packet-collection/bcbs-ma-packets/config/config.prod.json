@@ -1,0 +1,8 @@
+{
+  "$comment": "Layer 4, production. There is no sandbox for this carrier portal - dev and prod point at the same live site on purpose.",
+  "automation": {
+    "appUrl": "https://bluecrossma.my.site.com/s/",
+    "usernameEnv": "BCBS_MA_USERNAME",
+    "passwordEnv": "BCBS_MA_PASSWORD"
+  }
+}

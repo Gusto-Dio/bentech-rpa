@@ -1,0 +1,14 @@
+{
+  "id": "packet-collection/bcbs-ma-packets",
+  "name": "BCBS MA Packet Collection",
+  "description": "Downloads the renewal packet (BQR Renewal Notice PDF) for a group from the BCBS MA broker portal.",
+  "domain": "packet-collection",
+  "owners": ["@Gusto-Dio"],
+  "criticality": "medium",
+  "sessionKind": "browser",
+  "entry": "src/index.ts",
+  "queue": {
+    "name": "BCBS_MA_Packets"
+  },
+  "tags": []
+}

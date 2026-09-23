@@ -134,6 +134,27 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/testkit
 
+  automations/packet-collection/_shared:
+    dependencies:
+      '@rpa/core':
+        specifier: workspace:*
+        version: link:../../../packages/core
+
+  automations/packet-collection/bcbs-ma-packets:
+    dependencies:
+      '@auto/packet-collection-shared':
+        specifier: workspace:*
+        version: link:../_shared
+      '@rpa/core':
+        specifier: workspace:*
+        version: link:../../../packages/core
+      playwright:
+        specifier: 1.62.1
+        version: 1.62.1
+      zod:
+        specifier: 4.5.4
+        version: 4.5.4
+
   packages/cli:
     dependencies:
       '@rpa/core':

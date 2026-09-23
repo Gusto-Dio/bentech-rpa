@@ -667,6 +667,11 @@ Honest list, so nobody discovers these the hard way.
   for automation authors
 - [docs/migrating-from-uipath.md](docs/migrating-from-uipath.md) — porting a
   REFramework process, step by step
+- [docs/claude-play-route.md](docs/claude-play-route.md) — **read this before
+  reaching for a live AI agent instead of a deterministic script.** Why the
+  Claude + Playwright agentic route was not approved for BenOps/benefits (PHI,
+  no safe retry, non-deterministic behavior on an irreversible submit), and
+  the two questions that decide whether it is fine elsewhere
 - [docs/poc/mfa-gmail.md](docs/poc/mfa-gmail.md) — how a code is read from a
   Gmail label, and the things about Gmail that made it hard: the basic HTML view
   was retired in 2024, `is:unread` cannot be used because the filter marks mail

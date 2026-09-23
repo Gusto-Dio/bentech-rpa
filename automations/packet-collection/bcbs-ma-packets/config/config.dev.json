@@ -1,0 +1,8 @@
+{
+  "$comment": "Layer 4: settings owned by this automation. Secret NAMES only, never values.",
+  "automation": {
+    "appUrl": "https://bluecrossma.my.site.com/s/",
+    "usernameEnv": "BCBS_MA_USERNAME",
+    "passwordEnv": "BCBS_MA_PASSWORD"
+  }
+}
